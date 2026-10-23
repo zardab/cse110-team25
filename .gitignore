@@ -14,6 +14,13 @@ coverage
 *.local
 *.tsbuildinfo
 
+# Local environment / Nix
+shell.nix
+flake.nix
+flake.lock
+.direnv
+.envrc
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

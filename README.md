@@ -5,10 +5,6 @@ React + TypeScript + Vite project with automated testing (Vitest + React Testing
 ## Prerequisites
 
 - Node.js (v22+) & npm
-- On NixOS, you can enter a development shell with Node.js via:
-  ```bash
-  nix-shell
-  ```
 
 ## Getting Started
 
