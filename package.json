@@ -12,8 +12,11 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "konva": "^10.9.0",
+    "lucide-react": "^1.62.0",
     "react": "^19.3.1",
-    "react-dom": "^19.3.1"
+    "react-dom": "^19.3.1",
+    "react-konva": "^19.3.2"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

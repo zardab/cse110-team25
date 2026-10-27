@@ -1,10 +1,168 @@
-.app-container {
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+/* src/App.css */
+:root {
+  --bg-primary: #f3f4f6;
+  --card-bg: #ffffff;
+  --text-main: #1f2937;
+  --text-muted: #9ca3af;
+  --accent-yellow: #facc15;
+  --border-color: #e5e7eb;
+  --radius-lg: 20px;
+  --radius-md: 12px;
+  --font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, sans-serif;
 }
 
-.card {
-  padding: 2em;
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg-primary);
+  font-family: var(--font-family);
+  color: var(--text-main);
+  -webkit-font-smoothing: antialiased;
+}
+
+.app-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 24px;
+  box-sizing: border-box;
+}
+
+/* Header Navbar */
+.level-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 900px;
+  margin-bottom: 16px;
+  padding: 0 8px;
+}
+
+.level-progress-dots {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid #6b7280;
+  background-color: transparent;
+}
+
+.dot.active {
+  background-color: #111827;
+  border-color: #111827;
+}
+
+.dot.current {
+  border-color: #111827;
+  border-width: 3px;
+}
+
+/* Main Workspace Card */
+.workspace-card {
+  position: relative;
+  background-color: var(--card-bg);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
+  padding: 20px;
+  border: 1px solid var(--border-color);
+}
+
+.level-badge-container {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-end;
+  z-index: 10;
+}
+
+.level-badge {
+  background-color: #f3f4f6;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+}
+
+/* Action Button */
+.check-answer-btn {
+  position: absolute;
+  bottom: 24px;
+  right: 24px;
+  background-color: #000000;
+  color: #ffffff;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+  transition: transform 0.15s ease, background-color 0.15s ease;
+}
+
+.check-answer-btn:hover {
+  background-color: #1f2937;
+  transform: translateY(-1px);
+}
+
+/* Gate Palette Footer */
+.palette-container {
+  width: 900px;
+  margin-top: 20px;
+  background-color: var(--card-bg);
+  border-radius: var(--radius-lg);
+  padding: 16px 24px;
+  border: 1px solid var(--border-color);
+  box-sizing: border-box;
+}
+
+.palette-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #6b7280;
+  margin-bottom: 12px;
+}
+
+.palette-grid {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.gate-card {
+  width: 90px;
+  height: 60px;
+  background-color: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  position: relative;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.gate-card:hover {
+  border-color: #9ca3af;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.gate-card.locked {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
