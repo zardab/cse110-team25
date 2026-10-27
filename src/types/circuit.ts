@@ -16,6 +16,7 @@ export interface SignalSource {
 export interface CircuitSlot {
   readonly id: string;
   readonly allowedGates?: ReadonlyArray<GateType>;
+  readonly assignedGate: GateType | null;
   readonly inputs: ReadonlyArray<SignalSource>;
   readonly outputWireId: string;
 }
