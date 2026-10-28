@@ -4,7 +4,7 @@ import { LevelConfig, AssignedGates, GateType, SignalState, SimulationResult } f
 
 // Mock backend evaluator hook for Track A handoff
 const evaluateCircuitState = (
-  levelConfig: LevelConfig,
+  _levelConfig: LevelConfig,
   assignedGates: AssignedGates
 ): SimulationResult => {
   const in_A = 1;
@@ -69,12 +69,12 @@ export class LevelScreen {
   }
 
   private placeGate(slotId: string, gate: GateType) {
-    this.assignedGates[slotId] = gate;
+    this.assignedGates = { ...this.assignedGates, [slotId]: gate };
     this.update();
   }
 
   private removeGate(slotId: string) {
-    this.assignedGates[slotId] = null;
+    this.assignedGates = { ...this.assignedGates, [slotId]: null };
     this.update();
   }
 
