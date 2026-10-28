@@ -172,3 +172,151 @@ describe('evaluateCircuit on a mock level', () => {
         expect(result.isSolved).toBe(false);
     });
 });
+
+// A 2-bit adder built by hand: inputs a0, a1, b0, b1 and outputs s0, s1, c2
+// (the three bits of a + b). Seven slots of XOR, AND, and OR gates.
+const adderLevel: LevelConfig = {
+    id: 'mock_adder',
+    title: 'Mock 2-bit Adder',
+    difficulty: 'HARD',
+    availableGatePalette: { AND: 2, OR: 1, NOT: 0, XOR: 2, NAND: 0, NOR: 0, XNOR: 0 },
+    primaryInputs: ['a0', 'a1', 'b0', 'b1'],
+    primaryOutputs: ['s0', 's1', 'c2'],
+    targetOutputs: { s0: 0, s1: 0, c2: 0 },
+    slots: {
+        sum0: {
+            id: 'sum0',
+            allowedGates: ['XOR'],
+            assignedGate: 'XOR',
+            inputs: [
+                { sourceType: 'PRIMARY_INPUT', sourceId: 'a0' },
+                { sourceType: 'PRIMARY_INPUT', sourceId: 'b0' },
+            ],
+            outputWireId: 's0',
+        },
+        carry0: {
+            id: 'carry0',
+            allowedGates: ['AND'],
+            assignedGate: 'AND',
+            inputs: [
+                { sourceType: 'PRIMARY_INPUT', sourceId: 'a0' },
+                { sourceType: 'PRIMARY_INPUT', sourceId: 'b0' },
+            ],
+            outputWireId: 'w_c0',
+        },
+        xor1: {
+            id: 'xor1',
+            allowedGates: ['XOR'],
+            assignedGate: 'XOR',
+            inputs: [
+                { sourceType: 'PRIMARY_INPUT', sourceId: 'a1' },
+                { sourceType: 'PRIMARY_INPUT', sourceId: 'b1' },
+            ],
+            outputWireId: 'w_x1',
+        },
+        sum1: {
+            id: 'sum1',
+            allowedGates: ['XOR'],
+            assignedGate: 'XOR',
+            inputs: [
+                { sourceType: 'SLOT_OUTPUT', sourceId: 'xor1' },
+                { sourceType: 'SLOT_OUTPUT', sourceId: 'carry0' },
+            ],
+            outputWireId: 's1',
+        },
+        and1: {
+            id: 'and1',
+            allowedGates: ['AND'],
+            assignedGate: 'AND',
+            inputs: [
+                { sourceType: 'PRIMARY_INPUT', sourceId: 'a1' },
+                { sourceType: 'PRIMARY_INPUT', sourceId: 'b1' },
+            ],
+            outputWireId: 'w_a1',
+        },
+        and2: {
+            id: 'and2',
+            allowedGates: ['AND'],
+            assignedGate: 'AND',
+            inputs: [
+                { sourceType: 'SLOT_OUTPUT', sourceId: 'xor1' },
+                { sourceType: 'SLOT_OUTPUT', sourceId: 'carry0' },
+            ],
+            outputWireId: 'w_a2',
+        },
+        carry2: {
+            id: 'carry2',
+            allowedGates: ['OR'],
+            assignedGate: 'OR',
+            inputs: [
+                { sourceType: 'SLOT_OUTPUT', sourceId: 'and1' },
+                { sourceType: 'SLOT_OUTPUT', sourceId: 'and2' },
+            ],
+            outputWireId: 'c2',
+        },
+    },
+    executionOrder: ['sum0', 'carry0', 'xor1', 'sum1', 'and1', 'and2', 'carry2'],
+    hints: [],
+};
+
+describe('evaluateCircuit on a 2-bit adder', () => {
+    const inputsFor = (a: number, b: number) => ({
+        a0: (a & 1) as 0 | 1,
+        a1: ((a >> 1) & 1) as 0 | 1,
+        b0: (b & 1) as 0 | 1,
+        b1: ((b >> 1) & 1) as 0 | 1,
+    });
+
+    it('computes a + b for all sixteen input combinations', () => {
+        for (let a = 0; a < 4; a++) {
+            for (let b = 0; b < 4; b++) {
+                const sum = a + b;
+                const level = {
+                    ...adderLevel,
+                    targetOutputs: {
+                        s0: (sum & 1) as 0 | 1,
+                        s1: ((sum >> 1) & 1) as 0 | 1,
+                        c2: ((sum >> 2) & 1) as 0 | 1,
+                    },
+                };
+                const result = evaluateCircuit(level, inputsFor(a, b));
+
+                expect(result.wireStates.s0).toBe(sum & 1);
+                expect(result.wireStates.s1).toBe((sum >> 1) & 1);
+                expect(result.wireStates.c2).toBe((sum >> 2) & 1);
+                expect(result.isComplete).toBe(true);
+                expect(result.isSolved).toBe(true);
+            }
+        }
+    });
+
+    it('is unsolved when only the carry output misses its target', () => {
+        const level = {
+            ...adderLevel,
+            targetOutputs: { s0: 0 as const, s1: 1 as const, c2: 1 as const },
+        };
+        const result = evaluateCircuit(level, inputsFor(1, 1));
+
+        expect(result.wireStates).toMatchObject({ s0: 0, s1: 1, c2: 0 });
+        expect(result.isSolved).toBe(false);
+    });
+
+    it('floats only the outputs downstream of an empty slot', () => {
+        const slots = {
+            ...adderLevel.slots,
+            and2: { ...adderLevel.slots.and2, assignedGate: 'NULL' as const },
+        };
+        const level = {
+            ...adderLevel,
+            slots,
+            targetOutputs: { s0: 1 as const, s1: 0 as const, c2: 0 as const },
+        };
+        const result = evaluateCircuit(level, inputsFor(3, 1));
+
+        expect(result.wireStates.s0).toBe(0);
+        expect(result.wireStates.s1).toBe(0);
+        expect(result.wireStates.c2).toBe('FLOATING');
+        expect(result.isComplete).toBe(false);
+        expect(result.isSolved).toBe(false);
+    });
+});
