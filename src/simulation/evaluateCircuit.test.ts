@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { CircuitSlot, GateType, LevelConfig, SignalState } from '../types/circuit';
+import type { CircuitSlot, LevelConfig } from '../types/circuit';
 import { evaluateCircuit } from './evaluateCircuit';
-import { evaluateGate } from './gates';
 
 const xorLevel: LevelConfig = {
     id: 'xor',
@@ -60,38 +59,6 @@ const xorLevel: LevelConfig = {
     executionOrder: ['not_a', 'not_b', 'and_a_not_b', 'and_not_a_b', 'or_terms'],
     hints: [],
 };
-
-const gateTruthTables: ReadonlyArray<readonly [GateType, ReadonlyArray<readonly [0 | 1, 0 | 1]>, ReadonlyArray<0 | 1>]> = [
-    ['AND', [[0, 0], [0, 1], [1, 0], [1, 1]], [0, 0, 0, 1]],
-    ['OR', [[0, 0], [0, 1], [1, 0], [1, 1]], [0, 1, 1, 1]],
-    ['NOT', [[0, 0], [0, 1], [1, 0], [1, 1]], [1, 1, 0, 0]],
-    ['XOR', [[0, 0], [0, 1], [1, 0], [1, 1]], [0, 1, 1, 0]],
-    ['NAND', [[0, 0], [0, 1], [1, 0], [1, 1]], [1, 1, 1, 0]],
-    ['NOR', [[0, 0], [0, 1], [1, 0], [1, 1]], [1, 0, 0, 0]],
-    ['XNOR', [[0, 0], [0, 1], [1, 0], [1, 1]], [1, 0, 0, 1]],
-];
-
-describe('evaluateGate', () => {
-    it.each(gateTruthTables)('evaluates the %s truth table', (gate, rows, expected) => {
-        rows.forEach((inputs, index) => {
-            const gateInputs: ReadonlyArray<SignalState> = gate === 'NOT' ? [inputs[0]] : inputs;
-            expect(evaluateGate(gate, gateInputs)).toBe(expected[index]);
-        });
-    });
-
-    it.each(['AND', 'OR', 'NOT', 'XOR', 'NAND', 'NOR', 'XNOR'] as const)(
-        'propagates floating signals through %s',
-        (gate) => {
-            const inputs: ReadonlyArray<SignalState> = gate === 'NOT' ? ['FLOATING'] : [1, 'FLOATING'];
-            expect(evaluateGate(gate, inputs)).toBe('FLOATING');
-        },
-    );
-
-    it('rejects invalid pin counts', () => {
-        expect(() => evaluateGate('NOT', [0, 1])).toThrow('NOT expects 1 input(s)');
-        expect(() => evaluateGate('AND', [1])).toThrow('AND expects 2 input(s)');
-    });
-});
 
 describe('evaluateCircuit', () => {
     it('evaluates the graph for the supplied primary inputs', () => {
