@@ -109,3 +109,66 @@ describe('evaluateCircuit', () => {
         expect(result.wireStates.out_Y).toBe(1);
     });
 });
+
+// A two-slot mock level built directly in code: out = NOT(a NAND b).
+// executionOrder is written by hand because the loader does not exist yet.
+const chainLevel: LevelConfig = {
+    id: 'mock_chain',
+    title: 'Mock Chain',
+    difficulty: 'EASY',
+    availableGatePalette: { AND: 0, OR: 0, NOT: 1, XOR: 0, NAND: 1, NOR: 0, XNOR: 0 },
+    primaryInputs: ['a', 'b'],
+    primaryOutputs: ['y'],
+    targetOutputs: { y: 1 },
+    slots: {
+        s_nand: {
+            id: 's_nand',
+            allowedGates: ['NAND'],
+            assignedGate: 'NAND',
+            inputs: [
+                { sourceType: 'PRIMARY_INPUT', sourceId: 'a' },
+                { sourceType: 'PRIMARY_INPUT', sourceId: 'b' },
+            ],
+            outputWireId: 'w_nand',
+        },
+        s_not: {
+            id: 's_not',
+            allowedGates: ['NOT'],
+            assignedGate: 'NOT',
+            inputs: [{ sourceType: 'SLOT_OUTPUT', sourceId: 's_nand' }],
+            outputWireId: 'y',
+        },
+    },
+    executionOrder: ['s_nand', 's_not'],
+    hints: [],
+};
+
+describe('evaluateCircuit on a mock level', () => {
+    it('carries each slot output through to the next slot', () => {
+        const result = evaluateCircuit(chainLevel, { a: 1, b: 1 });
+
+        expect(result.wireStates).toEqual({ a: 1, b: 1, w_nand: 0, y: 1 });
+        expect(result.isComplete).toBe(true);
+        expect(result.isSolved).toBe(true);
+    });
+
+    it('reports unsolved when the final output differs from its target', () => {
+        const result = evaluateCircuit(chainLevel, { a: 1, b: 0 });
+
+        expect(result.wireStates).toEqual({ a: 1, b: 0, w_nand: 1, y: 0 });
+        expect(result.isSolved).toBe(false);
+    });
+
+    it('floats the downstream output when an upstream slot is empty', () => {
+        const slots = {
+            ...chainLevel.slots,
+            s_nand: { ...chainLevel.slots.s_nand, assignedGate: 'NULL' as const },
+        };
+        const result = evaluateCircuit({ ...chainLevel, slots }, { a: 1, b: 1 });
+
+        expect(result.wireStates.w_nand).toBe('FLOATING');
+        expect(result.wireStates.y).toBe('FLOATING');
+        expect(result.isComplete).toBe(false);
+        expect(result.isSolved).toBe(false);
+    });
+});
