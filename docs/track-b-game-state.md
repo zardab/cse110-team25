@@ -9,7 +9,7 @@
 
 ## Contract
 
-Use `LevelConfig` as immutable level data and `AssignedGates` as mutable board state represented immutably. Follow the actions and mode behavior in the [implementation contract](implementation-contract.md). Track B calls the evaluator through an injected function or narrow module boundary so store tests can use a mock until Track A is ready.
+Use each slot's `assignedGate` field as board state, with `"NULL"` representing an empty slot. Keep updates immutable by replacing the affected slot and level values. Follow the actions and mode behavior in the [implementation contract](implementation-contract.md). Track B calls the evaluator through an injected function or narrow module boundary so store tests can use a mock until Track A is ready.
 
 Placement is valid only if the slot exists, the gate is allowed when `allowedGates` is present, and inventory is available. Invalid actions must not decrement inventory or add history. Removing a gate restores exactly one unit. Reset restores the starting palette and clears placements. Undo and redo restore placements and inventory together; a new board mutation after undo discards the redo branch.
 
