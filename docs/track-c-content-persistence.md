@@ -9,13 +9,13 @@
 
 ## Level Loading
 
-Treat JSON as untrusted input. Validate required fields, two-mode difficulty, gate names and counts, unique IDs, source references, pin arity, output-wire references, and truth-table input/output keys. Preserve input order. Normalize omitted palette counts to zero. Return actionable validation errors; do not silently repair invalid wiring or cycles.
+Treat JSON as untrusted input. Validate required fields, two-mode difficulty, gate names and counts, unique IDs, source references, pin arity, output-wire references, primary input IDs, and target output IDs. Require at least one primary output and exactly one desired value for each in `targetOutputs`. Preserve input order. Require every slot to have an `assignedGate` field, using `"NULL"` for an empty slot; normalize omitted palette counts to zero. Return actionable validation errors; do not silently repair invalid wiring or cycles.
 
 Compile the fixed slot dependency graph once during loading. Reject cycles and references to unknown slots or primary inputs. Use a stable topological ordering so fixtures and diagnostics remain reproducible. The evaluator must not recompute this order.
 
 ## Linting and Solvability
 
-The offline linter checks every level file for schema errors, cycles, disconnected or invalid pins, and at least one solvable assignment from the allowed palette. Reuse loader validation and the simulation contract where practical. Keep fixtures small enough for exhaustive solvability checks; report which level and constraint failed.
+The offline linter checks every level file for schema errors, cycles, disconnected or invalid pins. Report which level and constraint failed.
 
 ## Persistence
 
