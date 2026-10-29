@@ -45,6 +45,36 @@ Invalid placements leave state unchanged. Easy mode evaluates after every succes
 
 Track C owns a versioned storage format and adapter. Persist level progress and saved placements, not compiled execution order or transient wire states. Storage must tolerate missing, malformed, and older-version data by returning safe defaults rather than breaking level play. The adapter must not depend on Track B's store implementation.
 
+`src/persistence/storageAdapter.ts` exposes `StorageAdapter` with `getProgress`,
+`loadLevel`, `saveLevel`, `removeLevel`, and `clear`. Browser storage is the default;
+tests and other callers may inject `StorageLike` or `null`. Track B passes its
+current `AssignedGates` to the adapter and applies restored placements through
+its own state logic. The adapter does not mutate the store or evaluate the board.
+
+The storage key is `cse110-team25:progress`. Version 1 stores this shape:
+
+```ts
+type SavedProgressV1 = {
+  version: 1
+  levels: Record<string, {
+    completed: boolean
+    stars: number // integer from 0 through 3
+    placements: AssignedGates
+  }>
+}
+```
+
+`saveLevel(level, progress)` validates the placement map, preserves earned
+completion and the highest star count, and replaces the saved board. It returns
+`false` for invalid input or unavailable storage. `loadLevel(level)` checks slot
+IDs, gate types, pin arity, slot restrictions, and palette counts against the
+current level. If any placement is invalid, it returns an empty board while
+preserving valid completion/stars. Absent or unsupported data returns
+`{ completed: false, stars: 0, placements: {} }`. Reads never rewrite saved data.
+No migration from an older version is defined yet. `getProgress()` returns only
+completion/star summaries; board restoration always requires a loaded level.
+`removeLevel` resets one level, and `clear` removes only the adapter's own key.
+
 ## Integration Rules
 
 - Track A may use in-memory `LevelConfig` fixtures and does not wait for Track C.

@@ -48,3 +48,8 @@ GitHub Actions workflow (`.github/workflows/ci.yml`) automatically runs on pushe
 - [Track C: Content and persistence](docs/track-c-content-persistence.md): level loading, linting, storage, and tests.
 
 When a guide and implementation disagree, update the shared contract and its types in the same pull request before depending on the changed behavior.
+
+Track C's browser progress utility is `StorageAdapter` in
+`src/persistence/storageAdapter.ts`. It saves completed levels, best stars (0-3),
+and validated placements using a versioned localStorage key. See the Track C
+guide for its API, storage format, replay behavior, and failure handling.

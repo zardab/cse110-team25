@@ -91,6 +91,56 @@ Run the focused checks with
 
 Persist only user progress and saved placements, with a schema version. Do not persist compiled levels, execution order, or derived wire states. Handle absent storage, invalid JSON, and unsupported versions without preventing play; validate restored placements against the loaded level before applying them.
 
+### C.3 Storage Adapter
+
+`src/persistence/storageAdapter.ts` exports `StorageAdapter`, `StorageLike`,
+`LevelProgress`, and `LevelProgressSummary`. It imports the existing circuit
+types and loader's gate-name check. It has no dependency on Track B's store.
+The versioned format is defined in the shared implementation contract.
+
+```ts
+import { StorageAdapter } from '../persistence/storageAdapter'
+
+const storage = new StorageAdapter()
+const summaries = storage.getProgress() // Level menu: completed status and stars.
+const restored = storage.loadLevel(level) // Requires a compiled LevelConfig.
+// Track B can apply restored.placements through its own state logic.
+const saved = storage.saveLevel(level, {
+  completed: true,
+  stars: 3,
+  placements: assignedGates,
+})
+// A false result means saving was unavailable or the supplied progress was invalid.
+console.log(summaries, restored, saved)
+```
+
+Use `new StorageAdapter(mockStorage)` for tests, `new StorageAdapter(null)` to
+disable persistence, or pass a second constructor argument for a custom key.
+Browser localStorage is accessed only when an adapter is created. Missing or
+blocked storage, read/write errors, and quota failures never throw from adapter
+methods; failed mutations return `false`. The adapter re-reads before each save
+so sequential saves from different adapter instances preserve other levels.
+
+Stars are integers from 0 through 3. Saved completion and best stars never
+decrease during replay; the latest valid placements replace the previous board.
+Empty boards, partial boards, and explicit `null` placements are supported.
+Invalid save requests leave existing storage unchanged. Use `removeLevel(id)`
+to reset one level's achievements and board, or `clear()` to reset this game's
+progress. Neither operation clears unrelated localStorage keys.
+
+On restore, an unknown slot, invalid gate, wrong pin count, disallowed gate, or
+excess inventory clears the whole saved board instead of applying a partial
+repair. Valid earned achievements remain available. Malformed level summaries
+are ignored without discarding other valid summaries. Malformed JSON and
+unsupported schema versions return safe defaults and remain untouched by reads;
+an explicit successful save starts a new version-1 document. The adapter makes
+no claim that stored completion/stars were earned legitimately and does not
+recompute scoring; the game supplies those values after evaluation.
+
+Run focused tests with `npm test -- src/persistence/storageAdapter.test.ts`.
+Tests cover persistence across adapter instances, replay, multiple levels,
+invalid boards, malformed and older data, storage failures, and key isolation.
+
 ## Tests Before Integration
 
 - Load the documented sample after changing its difficulty to `HARD`.
