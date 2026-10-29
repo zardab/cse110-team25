@@ -96,6 +96,13 @@ const floatingBinaryInputs: ReadonlyArray<
   ['FLOATING', 'FLOATING'],
 ];
 
+describe('evaluateGate pin counts', () => {
+  it('rejects the wrong number of inputs', () => {
+    expect(() => evaluateGate('NOT', [0, 1])).toThrow('NOT expects 1 input(s)');
+    expect(() => evaluateGate('AND', [1])).toThrow('AND expects 2 input(s)');
+  });
+});
+
 describe('evaluateGate', () => {
   describe.each(binaryGateCases)(
     '$gate',

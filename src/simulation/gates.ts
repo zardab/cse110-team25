@@ -67,5 +67,10 @@ export function evaluateGate(
   gate: GateType,
   inputs: ReadonlyArray<SignalState>,
 ): SignalState {
+  const expectedInputCount = gate === 'NOT' ? 1 : 2;
+  if (inputs.length !== expectedInputCount) {
+    throw new Error(`${gate} expects ${expectedInputCount} input(s), received ${inputs.length}`);
+  }
+
   return gateRegistry[gate](inputs);
 }
