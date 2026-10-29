@@ -49,6 +49,44 @@ run `npm test`, `npm run lint`, and `npm run build`.
 
 The offline linter checks every level file for schema errors, cycles, disconnected or invalid pins, and at least one solvable assignment from the allowed palette. Reuse loader validation and the simulation contract where practical. Keep fixtures small enough for exhaustive solvability checks; report which level and constraint failed.
 
+### C.2 Linter API and CLI
+
+`src/content/levelLinter.ts` exports `lintLevel(input, options?)`. Input may be
+JSON text or a parsed definition. It first calls the C.1 loader for schema,
+reference, pin, and cycle validation. It then searches complete gate placements
+in the compiled execution order, using Track A's `evaluateGate` functions.
+Each slot must receive an allowed gate with matching arity, and the assignment
+cannot exceed the palette counts. One assignment must satisfy every authored
+truth-table row and every primary output. Authors should include all input
+combinations needed to specify their puzzle; the linter does not invent targets
+for omitted rows. Unused palette gates are permitted, but every slot must be filled.
+
+On success it returns `{ levelId, solution }`; this witness placement is for
+offline verification and is not saved as player progress. Wiring/schema errors
+remain `LevelValidationError`; impossible assignments throw `LevelLintError`.
+The search stops at one million candidate placements by default. Exceeding the
+limit fails validation with an explicit "solvability is unproven" message,
+rather than claiming the level is impossible. Small levels can be checked
+exhaustively; larger offline callers can pass `{ maxSearchSteps: number }`.
+
+```bash
+npm run lint:levels
+npm run lint:levels -- path/to/level.json
+npm run lint:levels -- path/to/levels-directory
+```
+
+The default directory is `src/content/levels/`, which includes a solvable AND
+puzzle. The CLI recursively checks `.json` files, reports each failing filename
+and constraint, continues checking the remaining files, and exits nonzero on
+invalid levels, unreadable paths, or empty input directories. JSON fixtures that
+are deliberately invalid belong outside this default authored-level directory.
+The CLI uses Node's built-in TypeScript stripping (Node 22.6+ or 24+) and needs
+no extra dependencies. GitHub Actions runs `npm run lint:levels` on both Node
+versions before unit tests and the production build.
+
+Run the focused checks with
+`npm test -- src/content/levelLinter.test.ts scripts/lint-levels.test.mjs`.
+
 ## Persistence
 
 Persist only user progress and saved placements, with a schema version. Do not persist compiled levels, execution order, or derived wire states. Handle absent storage, invalid JSON, and unsupported versions without preventing play; validate restored placements against the loaded level before applying them.

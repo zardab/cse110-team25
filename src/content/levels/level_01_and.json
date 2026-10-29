@@ -1,0 +1,26 @@
+{
+  "id": "level_01_and",
+  "title": "Build an AND gate",
+  "difficulty": "EASY",
+  "availableGatePalette": { "AND": 1, "OR": 1, "XOR": 1 },
+  "primaryInputs": ["in_A", "in_B"],
+  "primaryOutputs": ["out_Y"],
+  "slots": {
+    "slot_1": {
+      "id": "slot_1",
+      "allowedGates": ["AND", "OR", "XOR"],
+      "inputs": [
+        { "sourceType": "PRIMARY_INPUT", "sourceId": "in_A" },
+        { "sourceType": "PRIMARY_INPUT", "sourceId": "in_B" }
+      ],
+      "outputWireId": "out_Y"
+    }
+  },
+  "truthTableTarget": [
+    { "inputs": { "in_A": 0, "in_B": 0 }, "expected": { "out_Y": 0 } },
+    { "inputs": { "in_A": 0, "in_B": 1 }, "expected": { "out_Y": 0 } },
+    { "inputs": { "in_A": 1, "in_B": 0 }, "expected": { "out_Y": 0 } },
+    { "inputs": { "in_A": 1, "in_B": 1 }, "expected": { "out_Y": 1 } }
+  ],
+  "hints": [{ "message": "The output is 1 only when both inputs are 1." }]
+}

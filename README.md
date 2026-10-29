@@ -4,7 +4,7 @@ React + TypeScript + Vite project with automated testing (Vitest + React Testing
 
 ## Prerequisites
 
-- Node.js (v22+) & npm
+- Node.js (v22.6+ or v24+) & npm
 
 ## Getting Started
 
@@ -27,6 +27,7 @@ React + TypeScript + Vite project with automated testing (Vitest + React Testing
 4. **Run linter & production build:**
    ```bash
    npm run lint
+   npm run lint:levels # Validate level JSON wiring and solvability
    npm run build
    ```
 
@@ -35,6 +36,7 @@ React + TypeScript + Vite project with automated testing (Vitest + React Testing
 GitHub Actions workflow (`.github/workflows/ci.yml`) automatically runs on pushes and pull requests to `main`:
 - Installs dependencies via `npm ci`
 - Checks code quality with ESLint (`npm run lint`)
+- Validates authored level files and gate-assignment solvability (`npm run lint:levels`)
 - Runs unit tests with Vitest (`npm test`)
 - Verifies TypeScript compilation and Vite production bundle (`npm run build`)
 
