@@ -12,6 +12,8 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "konva": "^10.9.0",
+    "kova": "^0.0.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
   },
