@@ -39,14 +39,14 @@ Track B owns the store and exposes `getState`, `dispatch`, and `subscribe`. Acti
 
 | Action         | Payload          | Behavior                                                                    |
 | -------------- | ---------------- | --------------------------------------------------------------------------- |
-| `PLACE_GATE`   | `slotId`, `gate` | Replace that slot's `assignedGate`; decrement its inventory.                |
+| `PLACE_GATE`   | `slotId`, `gate` | Replace that slot's `assignedGate`; decrement its inventory. A gate it replaces returns to inventory. |
 | `REMOVE_GATE`  | `slotId`         | Set the slot's `assignedGate` to `"NULL"` and return its gate to inventory. |
 | `RESET_BOARD`  | none             | Clear all placements and restore the level's starting inventory.            |
 | `CHECK_ANSWER` | none             | Evaluate now; meaningful in Hard mode.                                      |
 | `UNDO`         | none             | Restore the previous board and inventory snapshot when available.           |
 | `REDO`         | none             | Reapply the next board and inventory snapshot when available.               |
 
-Invalid placements leave state unchanged. Easy mode evaluates after every successful placement, removal, reset, undo, and redo. Hard mode does not evaluate those mutations; it evaluates only on `CHECK_ANSWER`. A board mutation in Hard mode clears stale result feedback. Checking an incomplete board is allowed and reports `isComplete: false`.
+Current scope: only `PLACE_GATE` and `REMOVE_GATE` are implemented. `RESET_BOARD`, `CHECK_ANSWER`, `UNDO`, and `REDO` keep the behavior in the table above but are deferred, so Hard mode has no way to produce a result yet. Invalid placements leave state unchanged; so does placing the gate a slot already holds and removing from an empty slot. `dispatch` returns `true` when an action was accepted and `false` when it was rejected, and subscribers are notified only on acceptance. `dispatch` throws only when an action could not be applied (for example, the evaluator failed, which leaves state unchanged); a subscriber that throws is reported with `console.error` and does not affect the action or the other subscribers. State exposes the level (placements live in each slot's `assignedGate`), the remaining `inventory`, and the latest `result` (or `null`). Easy mode evaluates once when the store is created and after every successful placement or removal. Hard mode does not evaluate those mutations; it evaluates only on `CHECK_ANSWER`. A board mutation in Hard mode clears stale result feedback. Checking an incomplete board is allowed and reports `isComplete: false`.
 
 ## Persistence Boundary
 
