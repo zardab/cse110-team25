@@ -16,12 +16,13 @@ const slot = (
   outputWireId,
 });
 
-// s_not only takes NOT, s_and takes AND or OR, and s_free has no restriction at all.
+// s_not only takes NOT, s_and takes AND or OR, and s_free and s_unary have no restriction at all
+// (two pins and one pin respectively), so only the arity check can reject a wrong gate there.
 const level: LevelConfig = {
   id: 'store_fixture',
   title: 'Store fixture',
   difficulty: 'EASY',
-  availableGatePalette: { AND: 1, OR: 1, NOT: 1, XOR: 1, NAND: 0, NOR: 0, XNOR: 0 },
+  availableGatePalette: { AND: 1, OR: 1, NOT: 2, XOR: 1, NAND: 0, NOR: 0, XNOR: 0 },
   primaryInputs: ['a', 'b'],
   primaryOutputs: ['y'],
   inputValues: { a: 1, b: 1 },
@@ -30,9 +31,10 @@ const level: LevelConfig = {
     s_not: slot('s_not', ['a'], 'w_not', ['NOT']),
     s_and: slot('s_and', ['a', 'b'], 'y', ['AND', 'OR']),
     s_free: slot('s_free', ['a', 'b'], 'w_free'),
+    s_unary: slot('s_unary', ['a'], 'w_unary'),
   },
   hints: [],
-  executionOrder: ['s_not', 's_and', 's_free'],
+  executionOrder: ['s_not', 's_and', 's_free', 's_unary'],
 };
 const hardLevel: LevelConfig = { ...level, difficulty: 'HARD' };
 
@@ -74,7 +76,7 @@ describe('createStore', () => {
         slots: { ...level.slots, s_not: { ...level.slots.s_not, assignedGate: 'NOT' as const } },
       };
 
-      expect(createStore(preplaced, mockEvaluate()).getState().inventory.NOT).toBe(0);
+      expect(createStore(preplaced, mockEvaluate()).getState().inventory.NOT).toBe(1);
     });
 
     it('rejects a level that places more gates than its palette holds', () => {
@@ -129,7 +131,8 @@ describe('createStore', () => {
       ['an inherited property as a gate', place('s_free', 'toString' as GateType)],
       ['a gate the slot does not allow', place('s_not', 'AND')],
       ['a unary gate on a two-pin slot with no restriction', place('s_free', 'NOT')],
-      ['a binary gate on a one-pin slot', place('s_not', 'XOR')],
+      ['a binary gate on a one-pin slot with no restriction', place('s_unary', 'XOR')],
+      ['a gate the one-pin slot does not allow', place('s_not', 'XOR')],
       ['a gate with none left in the inventory', place('s_free', 'NAND')],
     ])('rejects %s without changing anything', (_name, action) => {
       const evaluate = mockEvaluate();
@@ -214,6 +217,30 @@ describe('createStore', () => {
     });
   });
 
+  describe('when the evaluator throws', () => {
+    it('leaves the store unchanged and still usable', () => {
+      const evaluate = mockEvaluate();
+      const store = createStore(level, evaluate);
+      const listener = vi.fn();
+      store.subscribe(listener);
+      const before = store.getState();
+      evaluate.mockImplementationOnce(() => {
+        throw new Error('bad level');
+      });
+
+      expect(() => store.dispatch(place('s_and', 'AND'))).toThrow('bad level');
+
+      expect(store.getState()).toBe(before);
+      expect(listener).not.toHaveBeenCalled();
+
+      // The failed placement left no trace: the same gate is still available and places cleanly.
+      expect(store.dispatch(place('s_and', 'AND'))).toBe(true);
+      expect(gateIn(store, 's_and')).toBe('AND');
+      expect(store.getState().inventory.AND).toBe(0);
+      expect(listener).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe('subscribe', () => {
     it('notifies with the new state after each accepted action', () => {
       const store = createStore(level, mockEvaluate());
@@ -257,6 +284,7 @@ describe('createStore', () => {
 
       store.dispatch(place('s_not', 'NOT'));
       store.dispatch(place('s_free', 'XOR'));
+      store.dispatch(place('s_unary', 'NOT'));
       expect(store.getState().result?.isSolved).toBe(false);
 
       store.dispatch(place('s_and', 'OR'));

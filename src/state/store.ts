@@ -79,10 +79,13 @@ export function createStore(
   }
 
   // Easy mode evaluates after every board change; Hard mode drops the stale result instead.
+  // Evaluate first and commit level, inventory and result together, so an evaluator
+  // that throws leaves the store exactly as it was.
   function mutate(nextLevel: LevelConfig, nextInventory: Inventory): true {
+    const nextResult = isEasy ? evaluate(nextLevel) : null;
     level = nextLevel;
     inventory = nextInventory;
-    result = isEasy ? evaluate(level) : null;
+    result = nextResult;
     return publish();
   }
 
