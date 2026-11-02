@@ -229,6 +229,7 @@ export function loadLevel(input: unknown): LevelConfig {
   }
   validateWiring(circuitSlots, primaryInputs, primaryOutputs)
   const order = executionOrder(circuitSlots)
+  const inputValues = binaryValues(level.inputValues, primaryInputs, 'inputValues')
   const targetOutputs = binaryValues(level.targetOutputs, primaryOutputs, 'targetOutputs')
   const hints = list(level.hints, 'hints').map((value, index) => {
     const path = `hints[${index}]`
@@ -241,6 +242,6 @@ export function loadLevel(input: unknown): LevelConfig {
   })
   return {
     id, title, difficulty, availableGatePalette, primaryInputs, primaryOutputs,
-    slots: circuitSlots, targetOutputs, hints, executionOrder: order,
+    slots: circuitSlots, inputValues, targetOutputs, hints, executionOrder: order,
   }
 }

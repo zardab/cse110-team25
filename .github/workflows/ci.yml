@@ -31,6 +31,9 @@ jobs:
       - name: Run linter
         run: npm run lint
 
+      - name: Validate level files and solvability
+        run: npm run lint:levels
+
       - name: Run unit tests
         run: npm test
 
