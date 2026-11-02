@@ -8,6 +8,13 @@ import type {
   SimulationResult,
 } from '../types/circuit';
 
+// Descriptions displayed when hovering over gates
+const GATE_DESCRIPTIONS: Partial<Record<GateType, string>> = {
+  AND: 'AND: Outputs 1 only when both inputs are 1.',
+  OR: 'OR: Outputs 1 when at least one input is 1.',
+  NOT: 'NOT: Inverts the input (0 becomes 1, 1 becomes 0).',
+};
+
 // Mock backend evaluator
 const evaluateCircuitState = (
   _levelConfig: LevelConfig,
@@ -155,6 +162,7 @@ export class LevelScreen {
             class="gate-card"
             draggable="true"
             data-gate="${gate}"
+            title="${GATE_DESCRIPTIONS[gate]}"
             style="
               border: ${isSelected ? '2px solid #3B82F6' : '1px solid #E5E7EB'};
               background-color: ${isSelected ? '#EFF6FF' : '#F9FAFB'};
