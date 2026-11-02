@@ -93,9 +93,22 @@ function slots(value: unknown): Record<string, CircuitSlot> {
         fail(`${path}.allowedGates`, 'expected a nonempty list of distinct gates')
       }
     }
+    const assignedGate = slot.assignedGate
+    if (assignedGate !== 'NULL' && !isGateType(assignedGate)) {
+      fail(`${path}.assignedGate`, 'expected a playable gate or NULL for an empty slot')
+    }
+    if (assignedGate !== 'NULL') {
+      if (inputs.length !== (assignedGate === 'NOT' ? 1 : 2)) {
+        fail(`${path}.assignedGate`, 'assigned gate does not match the input pin count')
+      }
+      if (allowedGates !== undefined && !allowedGates.includes(assignedGate)) {
+        fail(`${path}.assignedGate`, 'assigned gate is not allowed in this slot')
+      }
+    }
     const parsedSlot: CircuitSlot = {
       id,
       ...(allowedGates === undefined ? {} : { allowedGates }),
+      assignedGate,
       inputs,
       outputWireId: text(slot.outputWireId, `${path}.outputWireId`),
     }
@@ -205,17 +218,18 @@ export function loadLevel(input: unknown): LevelConfig {
   if (primaryInputs.length === 0) fail('primaryInputs', 'expected at least one input')
   if (primaryOutputs.length === 0) fail('primaryOutputs', 'expected at least one output')
   const circuitSlots = slots(level.slots)
+  const assignedCounts = new Map<GateType, number>()
+  for (const slot of Object.values(circuitSlots)) {
+    if (slot.assignedGate === 'NULL') continue
+    const count = (assignedCounts.get(slot.assignedGate) ?? 0) + 1
+    if (count > availableGatePalette[slot.assignedGate]) {
+      fail(`slots.${slot.id}.assignedGate`, 'assigned gates exceed the available palette count')
+    }
+    assignedCounts.set(slot.assignedGate, count)
+  }
   validateWiring(circuitSlots, primaryInputs, primaryOutputs)
   const order = executionOrder(circuitSlots)
-  const truthTableTarget = list(level.truthTableTarget, 'truthTableTarget').map((value, index) => {
-    const path = `truthTableTarget[${index}]`
-    const row = record(value, path)
-    return {
-      inputs: binaryValues(row.inputs, primaryInputs, `${path}.inputs`),
-      expected: binaryValues(row.expected, primaryOutputs, `${path}.expected`),
-    }
-  })
-  if (truthTableTarget.length === 0) fail('truthTableTarget', 'expected at least one target row')
+  const targetOutputs = binaryValues(level.targetOutputs, primaryOutputs, 'targetOutputs')
   const hints = list(level.hints, 'hints').map((value, index) => {
     const path = `hints[${index}]`
     const hint = record(value, path)
@@ -227,6 +241,6 @@ export function loadLevel(input: unknown): LevelConfig {
   })
   return {
     id, title, difficulty, availableGatePalette, primaryInputs, primaryOutputs,
-    slots: circuitSlots, truthTableTarget, hints, executionOrder: order,
+    slots: circuitSlots, targetOutputs, hints, executionOrder: order,
   }
 }

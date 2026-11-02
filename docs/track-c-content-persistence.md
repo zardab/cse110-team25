@@ -18,6 +18,10 @@ Compile the fixed slot dependency graph once during loading. Reject cycles and r
 `src/content/levelLoader.ts` exports `loadLevel(input: unknown): LevelConfig`.
 Pass either JSON text or a parsed level definition. The loader creates fresh data,
 normalizes all seven gate counts, preserves input-pin order, and compiles the graph.
+It requires `targetOutputs` and a valid `assignedGate` on every slot, using
+`"NULL"` for empty slots. Nonempty assignments must respect arity, slot restrictions,
+and inventory, and the compiled result can be passed directly to
+`evaluateCircuit(level, primaryInputs)`.
 Independent ready slots run in lexicographic ID order, regardless of JSON key order.
 
 ```ts
@@ -35,7 +39,8 @@ try {
 
 Validation failures identify the offending field, for example
 `slots.start.inputs[0].sourceId: unknown PRIMARY_INPUT reference missing`.
-The loader requires nonempty input, output, slot, and target-row collections;
+The loader requires nonempty input, output, and slot collections and a binary
+target value for every declared primary output;
 `hints` may be empty. A slot may omit `allowedGates`; when present, every listed
 gate must match its pin count. Each primary output names a slot's output wire.
 Additional metadata is ignored and is not copied into the compiled config.

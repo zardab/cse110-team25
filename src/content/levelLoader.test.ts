@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { GATE_TYPES, LevelValidationError, loadLevel } from './levelLoader'
+import { evaluateCircuit } from '../simulation/evaluateCircuit'
 
 function fixture() {
   return {
@@ -9,7 +10,7 @@ function fixture() {
     // Deliberately authored out of execution order.
     slots: {
       finish: {
-        id: 'finish', allowedGates: ['OR'],
+        id: 'finish', allowedGates: ['OR'], assignedGate: 'NULL',
         inputs: [
           { sourceType: 'SLOT_OUTPUT', sourceId: 'start' },
           { sourceType: 'PRIMARY_INPUT', sourceId: 'in_B' },
@@ -17,17 +18,12 @@ function fixture() {
         outputWireId: 'out_Y',
       },
       start: {
-        id: 'start', allowedGates: ['NOT'],
+        id: 'start', allowedGates: ['NOT'], assignedGate: 'NULL',
         inputs: [{ sourceType: 'PRIMARY_INPUT', sourceId: 'in_A' }],
         outputWireId: 'wire_not_a',
       },
     },
-    truthTableTarget: [
-      { inputs: { in_A: 0, in_B: 0 }, expected: { out_Y: 1 } },
-      { inputs: { in_A: 0, in_B: 1 }, expected: { out_Y: 1 } },
-      { inputs: { in_A: 1, in_B: 0 }, expected: { out_Y: 0 } },
-      { inputs: { in_A: 1, in_B: 1 }, expected: { out_Y: 1 } },
-    ],
+    targetOutputs: { out_Y: 1 },
     hints: [{ triggerSlotId: 'start', message: 'Try inverting the first input.' }],
   }
 }
@@ -57,10 +53,10 @@ describe('loadLevel', () => {
     const level = loadLevel(definition)
     expect(definition).toEqual(before)
     definition.slots.start.inputs[0].sourceId = 'changed'
-    definition.truthTableTarget[0].inputs.in_A = 1
+    definition.targetOutputs.out_Y = 0
     definition.hints[0].message = 'changed'
     expect(level.slots.start.inputs[0].sourceId).toBe('in_A')
-    expect(level.truthTableTarget[0].inputs.in_A).toBe(0)
+    expect(level.targetOutputs.out_Y).toBe(1)
     expect(level.hints[0].message).not.toBe('changed')
   })
 
@@ -81,7 +77,7 @@ describe('loadLevel', () => {
     const a = { ...start, id: 'a', outputWireId: 'wire_a' }
     const z = { ...start, id: 'z', outputWireId: 'wire_z' }
     const definition = { ...fixture(), primaryOutputs: ['wire_a'], hints: [],
-      truthTableTarget: [{ inputs: { in_A: 0, in_B: 0 }, expected: { wire_a: 1 } }],
+      targetOutputs: { wire_a: 1 },
     }
     expect(loadLevel({ ...definition, slots: { z, a } }).executionOrder).toEqual(['a', 'z'])
     expect(loadLevel({ ...definition, slots: { a, z } }).executionOrder).toEqual(['a', 'z'])
@@ -109,24 +105,14 @@ describe('loadLevel', () => {
     ['duplicate output IDs', { ...fixture(), primaryOutputs: ['out_Y', 'out_Y'] }, 'unique'],
     ['unconnected output', { ...fixture(), primaryOutputs: ['unknown'] }, 'primaryOutputs'],
     ['no slots', { ...fixture(), slots: {} }, 'slots'],
-    ['no target rows', { ...fixture(), truthTableTarget: [] }, 'truthTableTarget'],
-    ['sparse target rows', { ...fixture(), truthTableTarget: new Array(1) }, 'truthTableTarget[0]'],
+    ['missing target outputs', { ...fixture(), targetOutputs: undefined }, 'targetOutputs'],
+    ['array target outputs', { ...fixture(), targetOutputs: [] }, 'targetOutputs'],
     ['missing hints', { ...fixture(), hints: undefined }, 'hints'],
-    ['non-binary input', { ...fixture(), truthTableTarget: [
-      { inputs: { in_A: true, in_B: 0 }, expected: { out_Y: 1 } },
-    ] }, 'in_A'],
-    ['missing truth-table input', { ...fixture(), truthTableTarget: [
-      { inputs: { in_A: 0 }, expected: { out_Y: 1 } },
-    ] }, 'inputs'],
-    ['extra truth-table input', { ...fixture(), truthTableTarget: [
-      { inputs: { in_A: 0, in_B: 0, extra: 1 }, expected: { out_Y: 1 } },
-    ] }, 'inputs'],
-    ['non-binary target', { ...fixture(), truthTableTarget: [
-      { inputs: { in_A: 0, in_B: 0 }, expected: { out_Y: 2 } },
-    ] }, 'out_Y'],
-    ['wrong target key', { ...fixture(), truthTableTarget: [
-      { inputs: { in_A: 0, in_B: 0 }, expected: { other: 1 } },
-    ] }, 'expected'],
+    ['non-binary target', { ...fixture(), targetOutputs: { out_Y: 2 } }, 'out_Y'],
+    ['boolean target', { ...fixture(), targetOutputs: { out_Y: true } }, 'out_Y'],
+    ['missing target key', { ...fixture(), targetOutputs: {} }, 'targetOutputs'],
+    ['wrong target key', { ...fixture(), targetOutputs: { other: 1 } }, 'targetOutputs'],
+    ['extra target key', { ...fixture(), targetOutputs: { out_Y: 1, other: 0 } }, 'targetOutputs'],
     ['unknown hint slot', { ...fixture(), hints: [{ triggerSlotId: 'missing', message: 'Hint' }] }, 'triggerSlotId'],
   ])('rejects %s with an actionable validation error', (_name, value, detail) => {
     expect(() => loadLevel(value)).toThrow(LevelValidationError)
@@ -148,6 +134,10 @@ describe('loadLevel', () => {
     ['empty restrictions', { ...fixture().slots.start, allowedGates: [] }, 'allowedGates'],
     ['duplicate restrictions', { ...fixture().slots.start, allowedGates: ['NOT', 'NOT'] }, 'allowedGates'],
     ['unknown gate', { ...fixture().slots.start, allowedGates: ['MAGIC'] }, 'allowedGates'],
+    ['missing assignment', { ...fixture().slots.start, assignedGate: undefined }, 'assignedGate'],
+    ['null assignment', { ...fixture().slots.start, assignedGate: null }, 'assignedGate'],
+    ['unknown assignment', { ...fixture().slots.start, assignedGate: 'MAGIC' }, 'assignedGate'],
+    ['assigned arity', { ...fixture().slots.start, assignedGate: 'AND' }, 'assignedGate'],
     ['disconnected input', { ...fixture().slots.start, inputs: [] }, 'inputs'],
     ['colliding output wire', { ...fixture().slots.start, outputWireId: 'out_Y' }, 'outputWireId'],
     ['input/wire collision', { ...fixture().slots.start, outputWireId: 'in_A' }, 'outputWireId'],
@@ -160,5 +150,26 @@ describe('loadLevel', () => {
   ])('rejects a slot with %s', (_name, start, detail) => {
     const definition = fixture()
     expect(() => loadLevel({ ...definition, slots: { ...definition.slots, start } })).toThrow(detail)
+  })
+
+  it('loads placements directly usable by the current Track A evaluator', () => {
+    const definition = fixture()
+    definition.slots.start.assignedGate = 'NOT'
+    definition.slots.finish.assignedGate = 'OR'
+    const level = loadLevel(definition)
+    expect(evaluateCircuit(level, { in_A: 0, in_B: 0 })).toMatchObject({
+      isComplete: true, isSolved: true, wireStates: { out_Y: 1 },
+    })
+    definition.slots.finish.assignedGate = 'NULL'
+    expect(evaluateCircuit(loadLevel(definition), { in_A: 0, in_B: 0 }).wireStates.out_Y).toBe('FLOATING')
+  })
+
+  it('rejects a disallowed assigned gate and assignments exceeding inventory', () => {
+    const definition = fixture()
+    definition.slots.finish.assignedGate = 'AND'
+    expect(() => loadLevel(definition)).toThrow('not allowed')
+    definition.slots.finish.assignedGate = 'OR'
+    definition.availableGatePalette.OR = 0
+    expect(() => loadLevel(definition)).toThrow('exceed the available palette')
   })
 })
