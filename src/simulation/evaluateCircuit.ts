@@ -53,7 +53,7 @@ function evaluateWithInputs(
 
 export function evaluateCircuit(
     level: LevelConfig,
-    primaryInputs: PrimaryInputValues,
+    primaryInputs: PrimaryInputValues = level.inputValues,
 ): SimulationResult {
     const isComplete = Object.values(level.slots).every((slot) => slot.assignedGate !== 'NULL');
     const wireStates = evaluateWithInputs(level, primaryInputs);

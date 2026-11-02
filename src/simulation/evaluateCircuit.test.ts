@@ -8,6 +8,7 @@ const xorLevel: LevelConfig = {
     difficulty: 'EASY',
     availableGatePalette: { AND: 2, OR: 1, NOT: 2, XOR: 0, NAND: 0, NOR: 0, XNOR: 0 },
     primaryInputs: ['in_A', 'in_B'],
+    inputValues: { in_A: 0, in_B: 1 },
     primaryOutputs: ['out_Y', 'wire_not_a'],
     targetOutputs: { out_Y: 1, wire_not_a: 1 },
     slots: {
@@ -61,6 +62,20 @@ const xorLevel: LevelConfig = {
 };
 
 describe('evaluateCircuit', () => {
+    it("defaults to the level's fixed inputValues", () => {
+        const result = evaluateCircuit(xorLevel);
+
+        expect(result.isSolved).toBe(true);
+        expect(result.wireStates).toMatchObject({ in_A: 0, in_B: 1, out_Y: 1 });
+    });
+
+    it('lets explicit inputs override the level inputValues', () => {
+        const result = evaluateCircuit(xorLevel, { in_A: 1, in_B: 1 });
+
+        expect(result.wireStates).toMatchObject({ in_A: 1, in_B: 1, out_Y: 0 });
+        expect(result.isSolved).toBe(false);
+    });
+
     it('evaluates the graph for the supplied primary inputs', () => {
         const result = evaluateCircuit(xorLevel, { in_A: 0, in_B: 1 });
 
@@ -118,6 +133,7 @@ const chainLevel: LevelConfig = {
     difficulty: 'EASY',
     availableGatePalette: { AND: 0, OR: 0, NOT: 1, XOR: 0, NAND: 1, NOR: 0, XNOR: 0 },
     primaryInputs: ['a', 'b'],
+    inputValues: { a: 1, b: 1 },
     primaryOutputs: ['y'],
     targetOutputs: { y: 1 },
     slots: {
@@ -181,6 +197,7 @@ const adderLevel: LevelConfig = {
     difficulty: 'HARD',
     availableGatePalette: { AND: 2, OR: 1, NOT: 0, XOR: 2, NAND: 0, NOR: 0, XNOR: 0 },
     primaryInputs: ['a0', 'a1', 'b0', 'b1'],
+    inputValues: { a0: 0, a1: 0, b0: 0, b1: 0 },
     primaryOutputs: ['s0', 's1', 'c2'],
     targetOutputs: { s0: 0, s1: 0, c2: 0 },
     slots: {

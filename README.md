@@ -45,4 +45,6 @@ GitHub Actions workflow (`.github/workflows/ci.yml`) automatically runs on pushe
 - [Track B: Game state](docs/track-b-game-state.md): actions, inventory, modes, history, and store tests.
 - [Track C: Content and persistence](docs/track-c-content-persistence.md): level loading, linting, storage, and tests.
 
+`docs/implementation-contract.md` and `src/types/circuit.ts` supersede the original planning PDF where they differ (for example `'NULL'` for empty slots, one `targetOutputs` row with fixed `inputValues`, and no divergence diagnostics yet).
+
 When a guide and implementation disagree, update the shared contract and its types in the same pull request before depending on the changed behavior.
