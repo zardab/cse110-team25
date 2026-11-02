@@ -1,43 +1,25 @@
 // src/ui/LevelScreen.ts
 import { GameBoardView } from './components/GameBoardView';
-import { LevelConfig, AssignedGates, GateType, SignalState, SimulationResult } from '../types/circuit';
+import { evaluateCircuit } from '../simulation/evaluateCircuit';
+import type { AssignedGate, GateType, LevelConfig, PrimaryInputValues } from '../types/circuit';
 
-// Mock backend evaluator hook for Track A handoff
-const evaluateCircuitState = (
-  _levelConfig: LevelConfig,
-  assignedGates: AssignedGates
-): SimulationResult => {
-  const in_A = 1;
-  const in_B = 0;
-  const gate = assignedGates['slot_1'];
-
-  let out_Y: SignalState = 'FLOATING';
-  if (gate === 'OR') out_Y = (in_A || in_B) as SignalState;
-  if (gate === 'AND') out_Y = (in_A && in_B) as SignalState;
-  if (gate === 'NOT') out_Y = in_A ? 0 : 1;
-
-  const isSolved = out_Y === 1;
-
-  return {
-    isComplete: Boolean(gate),
-    isSolved,
-    wireStates: { in_A, in_B, out_Y },
-    firstDivergentSlotId: isSolved ? null : 'slot_1',
-  };
-};
+// Fixed inputs for this level. TODO: move onto the level once the contract has an inputValues field.
+const LEVEL_1_INPUTS: PrimaryInputValues = { in_A: 1, in_B: 0 };
 
 const LEVEL_1_CONFIG: LevelConfig = {
   id: 'level_01_intro',
   title: 'Level 1: The OR Gate',
   difficulty: 'EASY',
-  availableGatePalette: { OR: 1, AND: 1, NOT: 1, XOR: 0, NAND: 0, NOR: 0, XNOR: 0 },
+  availableGatePalette: { OR: 1, AND: 1, NOT: 0, XOR: 0, NAND: 0, NOR: 0, XNOR: 0 },
   primaryInputs: ['in_A', 'in_B'],
   primaryOutputs: ['out_Y'],
+  targetOutputs: { out_Y: 1 },
   executionOrder: ['slot_1'],
   slots: {
     slot_1: {
       id: 'slot_1',
-      allowedGates: ['OR', 'AND', 'NOT'],
+      allowedGates: ['OR', 'AND'],
+      assignedGate: 'NULL',
       inputs: [
         { sourceType: 'PRIMARY_INPUT', sourceId: 'in_A' },
         { sourceType: 'PRIMARY_INPUT', sourceId: 'in_B' },
@@ -45,12 +27,18 @@ const LEVEL_1_CONFIG: LevelConfig = {
       outputWireId: 'out_Y',
     },
   },
-  truthTableTarget: [],
   hints: [],
 };
 
+const TRAY_GATES: GateType[] = ['OR', 'AND'];
+
+// Board changes replace the slot value; connections are never touched.
+function withGate(level: LevelConfig, slotId: string, gate: AssignedGate): LevelConfig {
+  return { ...level, slots: { ...level.slots, [slotId]: { ...level.slots[slotId], assignedGate: gate } } };
+}
+
 export class LevelScreen {
-  private assignedGates: AssignedGates = { slot_1: null };
+  private level: LevelConfig = LEVEL_1_CONFIG;
   private boardView: GameBoardView;
 
   constructor() {
@@ -69,26 +57,26 @@ export class LevelScreen {
   }
 
   private placeGate(slotId: string, gate: GateType) {
-    this.assignedGates = { ...this.assignedGates, [slotId]: gate };
+    this.level = withGate(this.level, slotId, gate);
     this.update();
   }
 
   private removeGate(slotId: string) {
-    this.assignedGates = { ...this.assignedGates, [slotId]: null };
+    this.level = withGate(this.level, slotId, 'NULL');
     this.update();
   }
 
   // Called on state changes to recalculate and redraw
   private update() {
-    const simResult = evaluateCircuitState(LEVEL_1_CONFIG, this.assignedGates);
-    this.boardView.render(this.assignedGates, simResult.wireStates);
+    const simResult = evaluateCircuit(this.level, LEVEL_1_INPUTS);
+    this.boardView.render(this.level, simResult.wireStates);
     this.renderTrayUI();
   }
 
   private setupHeaderAndTray() {
     // Reset Button Event
     document.getElementById('reset-btn')?.addEventListener('click', () => {
-      this.assignedGates = { slot_1: null };
+      this.level = LEVEL_1_CONFIG;
       this.update();
     });
 
@@ -105,10 +93,9 @@ export class LevelScreen {
     const grid = document.getElementById('palette-grid');
     if (!grid) return;
 
-    const gates: GateType[] = ['OR', 'AND', 'NOT'];
-    grid.innerHTML = gates
+    grid.innerHTML = TRAY_GATES
       .map((gate) => {
-        const isSelected = this.assignedGates['slot_1'] === gate;
+        const isSelected = this.level.slots['slot_1'].assignedGate === gate;
         return `
           <div 
             class="gate-card" 
