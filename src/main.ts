@@ -1,7 +1,6 @@
-// src/main.ts
-import { LevelScreen } from './ui/LevelScreen';
-import './index.css';
+import { createRoot } from 'react-dom/client'
+import App from './App'
 
-document.addEventListener('DOMContentLoaded', () => {
-  new LevelScreen();
-});
+createRoot(document.getElementById('root')!).render(
+  <App />
+)
