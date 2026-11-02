@@ -1,5 +1,5 @@
 
-import type { ScreenController } from "../../types.ts";
+import type { ScreenController } from "../../screenTypes.ts";
 import { Cutscene1View } from "./Cutscene1View.ts";
 
 type Line = { atMs: number; text: string; bounce?: boolean };

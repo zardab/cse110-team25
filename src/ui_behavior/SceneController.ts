@@ -1,17 +1,21 @@
 
 import Konva from "konva";
-import type { ScreenId, ScreenController, ScreenSwitcher } from "../screenTypes.ts";
+import type {
+  ScreenId,
+  ScreenController,
+  ScreenSwitcher,
+} from "../screenTypes.ts";
+
 import { MainMenuController } from "./MainMenuController.ts";
 import { Cutscene1Controller } from "../Cutscenes/Cutscene1/Cutscene1Controller.ts";
 import { LevelSelectorController } from "./LevelSelectorController.ts";
 
-/**
- * SceneController - Owns the canvas and decides which screen is showing
- */
+type KonvaScreenId = Exclude<ScreenId["type"], "level1">;
+
 export class SceneController implements ScreenSwitcher {
   private stage: Konva.Stage;
   private layer = new Konva.Layer();
-  private screens: Record<ScreenId["type"], ScreenController>;
+  private screens: Record<KonvaScreenId, ScreenController>;
 
   constructor(private onLevel1: () => void) {
     const width = window.innerWidth;
@@ -19,8 +23,8 @@ export class SceneController implements ScreenSwitcher {
 
     this.stage = new Konva.Stage({
       container: "container",
-      width: width,
-      height: height,
+      width,
+      height,
     });
 
     this.stage.add(this.layer);
