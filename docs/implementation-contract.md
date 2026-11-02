@@ -25,12 +25,13 @@ evaluateCircuit(
 
 Callers normally omit `primaryInputs`, and the evaluator uses the level's `inputValues`. An explicit argument overrides them (for example, in tests). The result's `wireStates` describe the primary input values that were used. `isComplete` is true only when every slot has an assigned gate other than `"NULL"`. `isSolved` is true only when the board is complete and every declared primary output matches its value in `targetOutputs` for the supplied primary inputs. A `"NULL"` slot and its downstream outputs are `FLOATING`; a gate with any floating input produces a floating output.
 
-Track C's offline linter follows this target-output contract. Supplying
-`primaryInputs` in its options searches for a complete placement for exactly
-those inputs. Without supplied values it finds one placement and one binary
-input combination that reach the targets, returning both as a witness. That
-default does not claim solvability for all possible inputs. Input enumeration
-and gate choices share a bounded search budget.
+Track C's offline linter follows this target-output contract. By default it
+searches for a complete placement for the level's fixed `inputValues`; it never
+substitutes different inputs to reach the targets. Supplying `primaryInputs` in
+its options explicitly overrides those values, matching the evaluator's override.
+The result returns the placement and the inputs used as a witness for that one
+row, without claiming solvability for all possible inputs. Gate choices share a
+bounded search budget.
 
 ## Game State Boundary
 

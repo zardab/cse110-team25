@@ -18,10 +18,11 @@ Compile the fixed slot dependency graph once during loading. Reject cycles and r
 `src/content/levelLoader.ts` exports `loadLevel(input: unknown): LevelConfig`.
 Pass either JSON text or a parsed level definition. The loader creates fresh data,
 normalizes all seven gate counts, preserves input-pin order, and compiles the graph.
-It requires `targetOutputs` and a valid `assignedGate` on every slot, using
+It requires `inputValues` with exactly the declared primary input IDs and binary
+values, `targetOutputs`, and a valid `assignedGate` on every slot, using
 `"NULL"` for empty slots. Nonempty assignments must respect arity, slot restrictions,
 and inventory, and the compiled result can be passed directly to
-`evaluateCircuit(level, primaryInputs)`.
+`evaluateCircuit(level)`, which defaults to the authored `inputValues`.
 Independent ready slots run in lexicographic ID order, regardless of JSON key order.
 
 ```ts
@@ -62,18 +63,19 @@ reference, pin, and cycle validation. It then searches complete gate placements
 in the compiled execution order, using Track A's `evaluateGate` functions.
 Each slot must receive an allowed gate with matching arity, and the assignment
 cannot exceed the palette counts. The current contract uses a `targetOutputs`
-vector evaluated for supplied primary inputs, rather than truth-table rows.
-Pass `{ primaryInputs: { in_A: 1, in_B: 0 } }` to check a particular runtime input
-combination. When omitted, the offline search finds one input combination and
-one complete placement that reach all target outputs together. This existential
-check does not establish that every possible input combination is solvable.
+vector evaluated for the level's fixed `inputValues`, rather than truth-table rows.
+The default search varies gate placements only; it cannot substitute a different
+input combination to make an otherwise impossible puzzle pass. An explicit
+`{ primaryInputs: { in_A: 1, in_B: 0 } }` overrides the inputs for diagnostic checks,
+matching the evaluator's explicit override. This checks one input row and does
+not establish solvability for every possible input combination.
 Unused palette gates are permitted, but every slot must be filled. Starting
 assignments are editable board state; the search considers all allowed placements.
 
 On success it returns `{ levelId, solution, primaryInputs }`; this witness is for
 offline verification and is not saved as player progress. Wiring/schema errors
 remain `LevelValidationError`; impossible assignments throw `LevelLintError`.
-The search stops at one million input-binding and gate-placement steps by default. Exceeding the
+The search stops at one million gate-placement steps by default. Exceeding the
 limit fails validation with an explicit "solvability is unproven" message,
 rather than claiming the level is impossible. Small levels can be checked
 exhaustively; larger offline callers can pass `{ maxSearchSteps: number }`.
@@ -159,7 +161,7 @@ invalid boards, malformed and older data, storage failures, and key isolation.
 
 ## Tests Before Integration
 
-- Load a current-schema JSON fixture and pass it to the team evaluator with primary input values.
+- Load a current-schema JSON fixture and pass it to the team evaluator using its authored `inputValues`.
 - Reject malformed levels, unknown sources, invalid arity, and cycles.
 - Assert deterministic execution order for a known DAG.
 - Verify missing palette keys normalize to zero.

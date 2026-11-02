@@ -35,6 +35,7 @@ function fixture(id = 'two-step'): LevelConfig {
     id, title: 'Invert then AND', difficulty: 'EASY',
     availableGatePalette: { NOT: 1, AND: 1, OR: 1 },
     primaryInputs: ['a', 'b'], primaryOutputs: ['y'],
+    inputValues: { a: 0, b: 1 },
     slots: {
       start: { id: 'start', assignedGate: 'NULL', inputs: [{ sourceType: 'PRIMARY_INPUT', sourceId: 'a' }],
         outputWireId: 'middle',

@@ -20,12 +20,13 @@ export interface LevelLintOptions {
   readonly maxSearchSteps?: number
 }
 
-/** Find a complete placement reaching targetOutputs for supplied or searched inputs. */
+/** Find a complete placement for the level's fixed inputs or an explicit override. */
 export function lintLevel(
   input: unknown,
   { primaryInputs, maxSearchSteps = 1_000_000 }: LevelLintOptions = {},
 ): LevelLintResult {
   const level = loadLevel(input)
+  const fixedInputs = primaryInputs ?? level.inputValues
   if (!Number.isSafeInteger(maxSearchSteps) || maxSearchSteps < 1) {
     throw new LevelLintError('maxSearchSteps must be a positive safe integer')
   }
@@ -38,7 +39,6 @@ export function lintLevel(
   const order = level.executionOrder
   const remaining = { ...level.availableGatePalette }
   const assigned = new Map<string, GateType>()
-  const inputs = new Map<string, 0 | 1>()
   const values = new Map<string, SignalState>()
   const outputs = new Set(level.primaryOutputs)
   const candidates = order.map((id) => {
@@ -69,7 +69,7 @@ export function lintLevel(
       remaining[gate] -= 1
       assigned.set(id, gate)
       const value = evaluateGate(gate, slot.inputs.map((source) => source.sourceType === 'PRIMARY_INPUT'
-        ? inputs.get(source.sourceId)!
+        ? fixedInputs[source.sourceId]
         : values.get(source.sourceId)!))
       values.set(id, value)
       const matches = !outputs.has(slot.outputWireId) || value === level.targetOutputs[slot.outputWireId]
@@ -80,30 +80,8 @@ export function lintLevel(
     return false
   }
 
-  function chooseInputs(index: number): boolean {
-    if (index === level.primaryInputs.length) {
-      values.clear()
-      return place(0)
-    }
-    const id = level.primaryInputs[index]
-    for (const bit of [0, 1] as const) {
-      step()
-      inputs.set(id, bit)
-      if (chooseInputs(index + 1)) return true
-    }
-    inputs.delete(id)
-    return false
+  if (!place(0)) {
+    throw new LevelLintError(`${level.id}: no complete solvable assignment reaches targetOutputs within the palette counts and slot restrictions for ${primaryInputs === undefined ? 'the level inputValues' : 'the supplied primary inputs'}`)
   }
-
-  let solved: boolean
-  if (primaryInputs !== undefined) {
-    for (const id of level.primaryInputs) inputs.set(id, primaryInputs[id])
-    solved = place(0)
-  } else {
-    solved = chooseInputs(0)
-  }
-  if (!solved) {
-    throw new LevelLintError(`${level.id}: no complete solvable assignment reaches targetOutputs within the palette counts and slot restrictions${primaryInputs === undefined ? '' : ' for the supplied primary inputs'}`)
-  }
-  return { levelId: level.id, solution: Object.fromEntries(assigned), primaryInputs: Object.fromEntries(inputs) }
+  return { levelId: level.id, solution: Object.fromEntries(assigned), primaryInputs: { ...fixedInputs } }
 }

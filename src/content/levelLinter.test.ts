@@ -9,6 +9,7 @@ function fixture() {
     id: 'and-puzzle', title: 'Build AND', difficulty: 'EASY',
     availableGatePalette: { AND: 1, NAND: 1, OR: 1 },
     primaryInputs: ['a', 'b'], primaryOutputs: ['y'], targetOutputs: { y: 1 },
+    inputValues: { a: 1, b: 1 },
     slots: {
       output: {
         id: 'output', allowedGates: ['AND'], assignedGate: 'NULL',
@@ -42,7 +43,13 @@ describe('lintLevel', () => {
     const slots = Object.fromEntries(Object.entries(compiled.slots).map(([id, slot]) =>
       [id, { ...slot, assignedGate: result.solution[id] }],
     ))
-    expect(evaluateCircuit({ ...compiled, slots }, result.primaryInputs).isSolved).toBe(true)
+    expect(evaluateCircuit({ ...compiled, slots }).isSolved).toBe(true)
+  })
+
+  it('rejects a puzzle unsolvable for its authored inputs even if other inputs would work', () => {
+    const authored = { ...fixture(), inputValues: { a: 0, b: 0 } }
+    expect(() => lintLevel(authored)).toThrow('for the level inputValues')
+    expect(lintLevel(authored, { primaryInputs: { a: 1, b: 1 } }).solution).toEqual({ output: 'AND' })
   })
 
   it('checks supplied inputs without substituting different values', () => {
@@ -120,10 +127,10 @@ describe('lintLevel', () => {
     expect(() => lintLevel('{')).toThrow('invalid JSON syntax')
   })
 
-  it('bounds placement and input searches without claiming an unproven level is impossible', () => {
+  it('bounds placement searches without claiming an unproven level is impossible', () => {
     expect(() => lintLevel(twoStep(), { maxSearchSteps: 1, primaryInputs: { a: 1, b: 0 } }))
       .toThrow('solvability is unproven')
-    expect(() => lintLevel(fixture(), { maxSearchSteps: 1 })).toThrow('solvability is unproven')
+    expect(() => lintLevel(twoStep(), { maxSearchSteps: 1 })).toThrow('solvability is unproven')
   })
 
   it.each([0, -1, 1.5, Infinity])('rejects invalid search limit %s', (maxSearchSteps) => {

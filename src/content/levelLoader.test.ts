@@ -7,6 +7,7 @@ function fixture() {
     id: 'two-step', title: 'Power the light', difficulty: 'EASY',
     availableGatePalette: { NOT: 1, OR: 1 },
     primaryInputs: ['in_A', 'in_B'], primaryOutputs: ['out_Y'],
+    inputValues: { in_A: 0, in_B: 0 },
     // Deliberately authored out of execution order.
     slots: {
       finish: {
@@ -33,6 +34,7 @@ describe('loadLevel', () => {
     const level = loadLevel(fixture())
     expect(level.id).toBe('two-step')
     expect(level.executionOrder).toEqual(['start', 'finish'])
+    expect(level.inputValues).toEqual({ in_A: 0, in_B: 0 })
     expect(level.slots.finish.inputs.map((input) => input.sourceId)).toEqual(['start', 'in_B'])
   })
 
@@ -54,9 +56,11 @@ describe('loadLevel', () => {
     expect(definition).toEqual(before)
     definition.slots.start.inputs[0].sourceId = 'changed'
     definition.targetOutputs.out_Y = 0
+    definition.inputValues.in_A = 1
     definition.hints[0].message = 'changed'
     expect(level.slots.start.inputs[0].sourceId).toBe('in_A')
     expect(level.targetOutputs.out_Y).toBe(1)
+    expect(level.inputValues.in_A).toBe(0)
     expect(level.hints[0].message).not.toBe('changed')
   })
 
@@ -105,6 +109,15 @@ describe('loadLevel', () => {
     ['duplicate output IDs', { ...fixture(), primaryOutputs: ['out_Y', 'out_Y'] }, 'unique'],
     ['unconnected output', { ...fixture(), primaryOutputs: ['unknown'] }, 'primaryOutputs'],
     ['no slots', { ...fixture(), slots: {} }, 'slots'],
+    ['missing input values', { ...fixture(), inputValues: undefined }, 'inputValues'],
+    ['null input values', { ...fixture(), inputValues: null }, 'inputValues'],
+    ['array input values', { ...fixture(), inputValues: [] }, 'inputValues'],
+    ['missing input key', { ...fixture(), inputValues: { in_A: 0 } }, 'inputValues'],
+    ['wrong input key', { ...fixture(), inputValues: { in_A: 0, other: 1 } }, 'inputValues'],
+    ['extra input key', { ...fixture(), inputValues: { in_A: 0, in_B: 0, other: 1 } }, 'inputValues'],
+    ['non-binary input', { ...fixture(), inputValues: { in_A: 2, in_B: 0 } }, 'inputValues.in_A'],
+    ['boolean input', { ...fixture(), inputValues: { in_A: true, in_B: 0 } }, 'inputValues.in_A'],
+    ['string input', { ...fixture(), inputValues: { in_A: '0', in_B: 0 } }, 'inputValues.in_A'],
     ['missing target outputs', { ...fixture(), targetOutputs: undefined }, 'targetOutputs'],
     ['array target outputs', { ...fixture(), targetOutputs: [] }, 'targetOutputs'],
     ['missing hints', { ...fixture(), hints: undefined }, 'hints'],
@@ -157,11 +170,12 @@ describe('loadLevel', () => {
     definition.slots.start.assignedGate = 'NOT'
     definition.slots.finish.assignedGate = 'OR'
     const level = loadLevel(definition)
-    expect(evaluateCircuit(level, { in_A: 0, in_B: 0 })).toMatchObject({
-      isComplete: true, isSolved: true, wireStates: { out_Y: 1 },
+    expect(evaluateCircuit(level)).toMatchObject({
+      isComplete: true, isSolved: true, wireStates: { in_A: 0, in_B: 0, out_Y: 1 },
     })
+    expect(evaluateCircuit(level, { in_A: 1, in_B: 0 }).isSolved).toBe(false)
     definition.slots.finish.assignedGate = 'NULL'
-    expect(evaluateCircuit(loadLevel(definition), { in_A: 0, in_B: 0 }).wireStates.out_Y).toBe('FLOATING')
+    expect(evaluateCircuit(loadLevel(definition)).wireStates.out_Y).toBe('FLOATING')
   })
 
   it('rejects a disallowed assigned gate and assignments exceeding inventory', () => {

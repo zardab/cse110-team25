@@ -73,4 +73,13 @@ describe('level linter CLI', () => {
     expect(run(file, '--inputs', '{broken').status).toBe(1)
     expect(run(file, '--inputs').status).toBe(1)
   })
+
+  it('fails by default when authored inputValues cannot reach the target', () => {
+    const file = path.join(temp, 'unsolvable-inputs.json')
+    writeFileSync(file, JSON.stringify({ ...valid, inputValues: { in_A: 0, in_B: 0 } }))
+    const failed = run(file)
+    expect(failed.status).toBe(1)
+    expect(failed.stderr).toContain('for the level inputValues')
+    expect(run(file, '--inputs', '{"in_A":1,"in_B":1}').status).toBe(0)
+  })
 })
