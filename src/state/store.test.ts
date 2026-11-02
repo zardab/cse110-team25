@@ -287,6 +287,27 @@ describe('createStore', () => {
       expect(late).toHaveBeenCalledTimes(1);
     });
 
+    it('still notifies every listener and accepts the action when one throws', () => {
+      const store = createStore(level, mockEvaluate());
+      const error = new Error('listener bug');
+      const report = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const first = vi.fn();
+      const last = vi.fn();
+      store.subscribe(first);
+      store.subscribe(() => {
+        throw error;
+      });
+      store.subscribe(last);
+
+      expect(store.dispatch(place('s_and', 'AND'))).toBe(true);
+
+      expect(gateIn(store, 's_and')).toBe('AND');
+      expect(first).toHaveBeenCalledWith(store.getState());
+      expect(last).toHaveBeenCalledWith(store.getState());
+      expect(report).toHaveBeenCalledWith(expect.any(String), error);
+      report.mockRestore();
+    });
+
     it('lets a listener unsubscribe itself while being notified', () => {
       const store = createStore(level, mockEvaluate());
       const other = vi.fn();

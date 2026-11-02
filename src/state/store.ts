@@ -72,9 +72,17 @@ export function createStore(
     return { level, inventory, result };
   }
 
+  // The action is already committed here, so a failing listener must not turn it into an
+  // exception or starve the listeners after it: report the error and keep notifying.
   function publish(): true {
     state = buildState();
-    for (const listener of [...listeners]) listener(state);
+    for (const listener of [...listeners]) {
+      try {
+        listener(state);
+      } catch (error) {
+        console.error('Game store listener failed:', error);
+      }
+    }
     return true;
   }
 

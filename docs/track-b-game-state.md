@@ -21,7 +21,7 @@ Placement is valid only if the slot exists, the gate is allowed when `allowedGat
 - Removing a placed gate restores inventory.
 - Easy mode evaluates after board mutations. Hard mode does not evaluate on mutations (it evaluates only on `CHECK_ANSWER` once that action exists).
 - Deferred: reset restores the initial board and inventory; undo and redo restore both placements and inventory, and a new action clears redo history.
-- Subscribers are notified after state changes, not after rejected actions.
+- Subscribers are notified after state changes, not after rejected actions. A throwing subscriber does not stop the others or make `dispatch` fail.
 - Unknown slots, unknown gates, disallowed gates, wrong arity, and an empty inventory are rejected.
 
 The store lives in `src/state/store.ts` (`createStore(level, evaluate)`) with tests in `src/state/store.test.ts`.
