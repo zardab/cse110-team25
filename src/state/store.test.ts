@@ -129,10 +129,10 @@ describe('createStore', () => {
       ['an inherited property as a slot ID', place('__proto__', 'AND')],
       ['an unknown gate', place('s_free', 'MAGIC' as GateType)],
       ['an inherited property as a gate', place('s_free', 'toString' as GateType)],
-      ['a gate the slot does not allow', place('s_not', 'AND')],
+      // Two pins and XOR in stock, so only the allow-list can reject this.
+      ['a gate the slot does not allow', place('s_and', 'XOR')],
       ['a unary gate on a two-pin slot with no restriction', place('s_free', 'NOT')],
       ['a binary gate on a one-pin slot with no restriction', place('s_unary', 'XOR')],
-      ['a gate the one-pin slot does not allow', place('s_not', 'XOR')],
       ['a gate with none left in the inventory', place('s_free', 'NAND')],
     ])('rejects %s without changing anything', (_name, action) => {
       const evaluate = mockEvaluate();
@@ -159,12 +159,20 @@ describe('createStore', () => {
     });
 
     it('rejects placing the gate that is already in the slot', () => {
-      const store = createStore(level, mockEvaluate());
-      store.dispatch(place('s_and', 'AND'));
+      // NOT has a second unit in stock, so only the same-gate check can reject this.
+      const evaluate = mockEvaluate();
+      const store = createStore(level, evaluate);
+      store.dispatch(place('s_not', 'NOT'));
+      const listener = vi.fn();
+      store.subscribe(listener);
       const before = store.getState();
+      evaluate.mockClear();
 
-      expect(store.dispatch(place('s_and', 'AND'))).toBe(false);
+      expect(store.dispatch(place('s_not', 'NOT'))).toBe(false);
+
       expect(store.getState()).toBe(before);
+      expect(listener).not.toHaveBeenCalled();
+      expect(evaluate).not.toHaveBeenCalled();
     });
   });
 
@@ -263,6 +271,20 @@ describe('createStore', () => {
       store.dispatch(place('s_and', 'AND'));
 
       expect(listener).not.toHaveBeenCalled();
+    });
+
+    it('does not call a listener added during a notification until the next one', () => {
+      const store = createStore(level, mockEvaluate());
+      const late = vi.fn();
+      store.subscribe(() => {
+        store.subscribe(late);
+      });
+
+      store.dispatch(place('s_and', 'AND'));
+      expect(late).not.toHaveBeenCalled();
+
+      store.dispatch(remove('s_and'));
+      expect(late).toHaveBeenCalledTimes(1);
     });
 
     it('lets a listener unsubscribe itself while being notified', () => {
