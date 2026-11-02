@@ -14,6 +14,9 @@ import type { LevelConfig } from "../types/circuit";
 
 type KonvaScreenId = Exclude<ScreenId["type"], "level1">;
 
+/**
+ * SceneController - Owns the canvas and decides which screen is showing
+ */
 export class SceneController implements ScreenSwitcher {
   private stage: Konva.Stage;
   private layer = new Konva.Layer();
