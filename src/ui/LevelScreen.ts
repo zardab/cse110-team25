@@ -56,12 +56,18 @@ export class LevelScreen {
     this.update();
   }
 
+  // Gates arrive from drag-and-drop data, so treat them as untrusted: reject
+  // unknown slots and gates the slot does not allow instead of evaluating them.
   private placeGate(slotId: string, gate: GateType) {
+    if (!Object.hasOwn(this.level.slots, slotId)) return;
+    const { allowedGates } = this.level.slots[slotId];
+    if (allowedGates && !allowedGates.includes(gate)) return;
     this.level = withGate(this.level, slotId, gate);
     this.update();
   }
 
   private removeGate(slotId: string) {
+    if (!Object.hasOwn(this.level.slots, slotId)) return;
     this.level = withGate(this.level, slotId, 'NULL');
     this.update();
   }
