@@ -1,10 +1,7 @@
 // src/ui/LevelScreen.ts
 import { GameBoardView } from './components/GameBoardView';
 import { evaluateCircuit } from '../simulation/evaluateCircuit';
-import type { AssignedGate, GateType, LevelConfig, PrimaryInputValues } from '../types/circuit';
-
-// Fixed inputs for this level. TODO: move onto the level once the contract has an inputValues field.
-const LEVEL_1_INPUTS: PrimaryInputValues = { in_A: 1, in_B: 0 };
+import type { AssignedGate, GateType, LevelConfig } from '../types/circuit';
 
 const LEVEL_1_CONFIG: LevelConfig = {
   id: 'level_01_intro',
@@ -13,6 +10,7 @@ const LEVEL_1_CONFIG: LevelConfig = {
   availableGatePalette: { OR: 1, AND: 1, NOT: 0, XOR: 0, NAND: 0, NOR: 0, XNOR: 0 },
   primaryInputs: ['in_A', 'in_B'],
   primaryOutputs: ['out_Y'],
+  inputValues: { in_A: 1, in_B: 0 },
   targetOutputs: { out_Y: 1 },
   executionOrder: ['slot_1'],
   slots: {
@@ -74,7 +72,7 @@ export class LevelScreen {
 
   // Called on state changes to recalculate and redraw
   private update() {
-    const simResult = evaluateCircuit(this.level, LEVEL_1_INPUTS);
+    const simResult = evaluateCircuit(this.level);
     this.boardView.render(this.level, simResult.wireStates);
     this.renderTrayUI();
   }

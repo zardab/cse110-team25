@@ -8,7 +8,8 @@ This document defines the boundaries shared by Tracks A, B, and C. The TypeScrip
 - `LevelDefinition` represents authored JSON. Its gate palette may omit gates; an omitted count means zero. Every slot uses the same `CircuitSlot` shape and must specify `assignedGate`; use `"NULL"` for an empty slot.
 - `LevelConfig` represents a validated, compiled level. The loader expands the palette to include every playable `GateType`, using zero for missing counts, and supplies `executionOrder`.
 - `CircuitSlot.assignedGate` is either a playable `GateType` or the sentinel `"NULL"`. The sentinel is not a playable gate and must not appear in `allowedGates` or the gate palette. Input order is significant and must be preserved. Track B changes placements by replacing slot values; it never changes connections.
-- `primaryInputs` lists the input IDs. `primaryOutputs` lists output wire IDs, and `targetOutputs` maps every output ID to its desired binary value. Primary input values supplied to evaluation must match the declared input IDs.
+- `primaryInputs` lists the input IDs. `inputValues` maps every input ID to the fixed binary value the level feeds the circuit. `primaryOutputs` lists output wire IDs, and `targetOutputs` maps every output ID to its desired binary value for those inputs. A level is one fixed input row and one target row, not a full truth table, so a solution only has to match that row. `inputValues` and `targetOutputs` are authored together and must always describe the same row.
+- Primary input values supplied to evaluation must match the declared input IDs.
 - Any source that cannot be resolved is an error in the level definition, not a runtime floating value.
 
 ## Evaluation Boundary
@@ -18,11 +19,11 @@ Track A exposes:
 ```ts
 evaluateCircuit(
   level: LevelConfig,
-  primaryInputs: PrimaryInputValues,
+  primaryInputs: PrimaryInputValues = level.inputValues,
 ): SimulationResult
 ```
 
-The result's `wireStates` describe the supplied primary input values. `isComplete` is true only when every slot has an assigned gate other than `"NULL"`. `isSolved` is true only when the board is complete and every declared primary output matches its value in `targetOutputs` for the supplied primary inputs. A `"NULL"` slot and its downstream outputs are `FLOATING`; a gate with any floating input produces a floating output.
+Callers normally omit `primaryInputs`, and the evaluator uses the level's `inputValues`. An explicit argument overrides them (for example, in tests). The result's `wireStates` describe the primary input values that were used. `isComplete` is true only when every slot has an assigned gate other than `"NULL"`. `isSolved` is true only when the board is complete and every declared primary output matches its value in `targetOutputs` for the supplied primary inputs. A `"NULL"` slot and its downstream outputs are `FLOATING`; a gate with any floating input produces a floating output.
 
 ## Game State Boundary
 
