@@ -53,6 +53,21 @@ describe('LevelScreen Logic', () => {
     expect(lastRender()).toMatchObject({ gate: 'NULL', wireStates: { out_Y: 'FLOATING' } });
   });
 
+  it('ignores gates the slot does not allow and unknown slots', () => {
+    options.onPlaceGate('slot_1', 'OR');
+    render.mockClear();
+
+    options.onPlaceGate('slot_1', 'NOT');
+    options.onPlaceGate('slot_1', 'not-a-gate');
+    options.onPlaceGate('missing', 'OR');
+    options.onPlaceGate('__proto__', 'OR');
+    options.onRemoveGate('missing');
+
+    expect(render).not.toHaveBeenCalled();
+    options.onPlaceGate('slot_1', 'AND');
+    expect(lastRender().gate).toBe('AND');
+  });
+
   it('offers only gates that fit the two-pin slot', () => {
     const cards = [...document.querySelectorAll('.gate-card')].map((c) => c.getAttribute('data-gate'));
     expect(cards).toEqual(['OR', 'AND']);
