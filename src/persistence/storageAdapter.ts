@@ -1,7 +1,7 @@
-import type { AssignedGates, GateType, LevelConfig } from '../types/circuit'
+import type { AssignedGate, GateType, LevelConfig } from '../types/circuit'
 import { isGateType } from '../content/levelLoader'
 
-export const PROGRESS_SCHEMA_VERSION = 1
+export const PROGRESS_SCHEMA_VERSION = 2
 export const PROGRESS_STORAGE_KEY = 'cse110-team25:progress'
 
 /** The subset of browser Storage needed by the adapter; injectable in tests. */
@@ -16,8 +16,10 @@ export interface LevelProgressSummary {
   readonly stars: number
 }
 
+export type SavedPlacements = Readonly<Record<string, AssignedGate>>
+
 export interface LevelProgress extends LevelProgressSummary {
-  readonly placements: AssignedGates
+  readonly placements: SavedPlacements
 }
 
 function browserStorage(): StorageLike | null {
@@ -38,16 +40,16 @@ function summary(value: unknown): value is LevelProgressSummary {
     && value.stars >= 0 && value.stars <= 3
 }
 
-function placements(value: unknown): value is AssignedGates {
-  return record(value) && Object.values(value).every((gate) => gate === null || isGateType(gate))
+function placements(value: unknown): value is SavedPlacements {
+  return record(value) && Object.values(value).every((gate) => gate === 'NULL' || isGateType(gate))
 }
 
-function validPlacements(level: LevelConfig, value: unknown): value is AssignedGates {
+function validPlacements(level: LevelConfig, value: unknown): value is SavedPlacements {
   if (!placements(value)) return false
   const counts = new Map<GateType, number>()
   for (const [id, gate] of Object.entries(value)) {
     if (!Object.hasOwn(level.slots, id)) return false
-    if (gate === null) continue
+    if (gate === 'NULL') continue
     const slot = level.slots[id]
     if ((gate === 'NOT' ? 1 : 2) !== slot.inputs.length
       || (slot.allowedGates !== undefined && !slot.allowedGates.includes(gate))) return false
@@ -81,12 +83,19 @@ export class StorageAdapter {
     if (raw === null) return {}
     try {
       const saved: unknown = JSON.parse(raw)
-      if (!record(saved) || saved.version !== PROGRESS_SCHEMA_VERSION || !record(saved.levels)) return {}
+      if (!record(saved) || (saved.version !== PROGRESS_SCHEMA_VERSION && saved.version !== 1)
+        || !record(saved.levels)) return {}
       return Object.fromEntries(Object.entries(saved.levels).flatMap(([id, progress]) => {
         if (id.trim().length === 0 || !summary(progress)) return []
-        const board = record(progress) && placements(progress.placements) ? progress.placements : {}
+        let board: unknown = record(progress) ? progress.placements : undefined
+        // Version 1 used JavaScript null; restore into the team's current NULL sentinel.
+        if (saved.version === 1 && record(board)) {
+          board = Object.fromEntries(Object.entries(board).map(([slotId, gate]) =>
+            [slotId, gate === null ? 'NULL' : gate],
+          ))
+        }
         return [[id, { completed: progress.completed, stars: progress.stars,
-          placements: { ...board },
+          placements: placements(board) ? { ...board } : {},
         }]]
       }))
     } catch {

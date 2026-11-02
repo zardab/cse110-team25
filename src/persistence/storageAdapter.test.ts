@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { AssignedGates, LevelConfig } from '../types/circuit'
+import type { LevelConfig } from '../types/circuit'
 import { loadLevel } from '../content/levelLoader'
 import {
   PROGRESS_SCHEMA_VERSION, PROGRESS_STORAGE_KEY, StorageAdapter,
-  type LevelProgress, type StorageLike,
+  type LevelProgress, type StorageLike, type SavedPlacements,
 } from './storageAdapter'
 
 class MemoryStorage implements StorageLike {
@@ -36,19 +36,19 @@ function fixture(id = 'two-step'): LevelConfig {
     availableGatePalette: { NOT: 1, AND: 1, OR: 1 },
     primaryInputs: ['a', 'b'], primaryOutputs: ['y'],
     slots: {
-      start: { id: 'start', inputs: [{ sourceType: 'PRIMARY_INPUT', sourceId: 'a' }],
+      start: { id: 'start', assignedGate: 'NULL', inputs: [{ sourceType: 'PRIMARY_INPUT', sourceId: 'a' }],
         outputWireId: 'middle',
       },
-      finish: { id: 'finish', allowedGates: ['AND'], inputs: [
+      finish: { id: 'finish', assignedGate: 'NULL', allowedGates: ['AND'], inputs: [
         { sourceType: 'SLOT_OUTPUT', sourceId: 'start' },
         { sourceType: 'PRIMARY_INPUT', sourceId: 'b' },
       ], outputWireId: 'y' },
     },
-    truthTableTarget: [{ inputs: { a: 0, b: 1 }, expected: { y: 1 } }], hints: [],
+    targetOutputs: { y: 1 }, hints: [],
   })
 }
 
-function progress(placements: AssignedGates = { start: 'NOT', finish: 'AND' }): LevelProgress {
+function progress(placements: SavedPlacements = { start: 'NOT', finish: 'AND' }): LevelProgress {
   return { completed: true, stars: 2, placements }
 }
 
@@ -74,7 +74,21 @@ describe('StorageAdapter', () => {
     expect(restored.loadLevel(level)).toEqual(progress())
     expect(restored.getProgress()).toEqual({ 'two-step': { completed: true, stars: 2 } })
     expect(JSON.parse(storage.data.get(PROGRESS_STORAGE_KEY)!)).toEqual({
-      version: 1, levels: { 'two-step': progress() },
+      version: 2, levels: { 'two-step': progress() },
+    })
+  })
+
+  it('migrates version-1 null placements on read and writes version 2 on the next save', () => {
+    const storage = new MemoryStorage()
+    const raw = saved({ 'two-step': { ...progress(), placements: { start: 'NOT', finish: null } } }, 1)
+    storage.data.set(PROGRESS_STORAGE_KEY, raw)
+    const adapter = new StorageAdapter(storage)
+    const restored = adapter.loadLevel(fixture())
+    expect(restored).toEqual({ ...progress(), placements: { start: 'NOT', finish: 'NULL' } })
+    expect(storage.data.get(PROGRESS_STORAGE_KEY)).toBe(raw)
+    expect(adapter.saveLevel(fixture(), restored)).toBe(true)
+    expect(JSON.parse(storage.data.get(PROGRESS_STORAGE_KEY)!)).toEqual({
+      version: 2, levels: { 'two-step': restored },
     })
   })
 
@@ -85,7 +99,7 @@ describe('StorageAdapter', () => {
       simulationResult: { isSolved: true },
     } as LevelProgress)
     expect(JSON.parse(storage.data.get(PROGRESS_STORAGE_KEY)!)).toEqual({
-      version: 1, levels: { 'two-step': progress() },
+      version: 2, levels: { 'two-step': progress() },
     })
   })
 
@@ -106,16 +120,16 @@ describe('StorageAdapter', () => {
     const adapter = new StorageAdapter(storage)
     const level = fixture()
     adapter.saveLevel(level, { ...progress(), stars: 3 })
-    adapter.saveLevel(level, { completed: false, stars: 0, placements: { start: null } })
+    adapter.saveLevel(level, { completed: false, stars: 0, placements: { start: 'NULL' } })
     expect(adapter.loadLevel(level)).toEqual({
-      completed: true, stars: 3, placements: { start: null },
+      completed: true, stars: 3, placements: { start: 'NULL' },
     })
   })
 
   it('supports incomplete boards, explicit empty slots, and omitted slots', () => {
     const adapter = new StorageAdapter(new MemoryStorage())
     const level = fixture()
-    const partial = { completed: false, stars: 0, placements: { start: 'NOT', finish: null } } as const
+    const partial = { completed: false, stars: 0, placements: { start: 'NOT', finish: 'NULL' } } as const
     expect(adapter.saveLevel(level, partial)).toBe(true)
     expect(adapter.loadLevel(level)).toEqual(partial)
     expect(adapter.saveLevel(level, { ...partial, placements: {} })).toBe(true)
@@ -124,20 +138,20 @@ describe('StorageAdapter', () => {
 
   it('does not retain mutable input or expose mutable internal state', () => {
     const adapter = new StorageAdapter(new MemoryStorage())
-    const placements: Record<string, 'NOT' | 'AND' | null> = { start: 'NOT', finish: 'AND' }
+    const placements: Record<string, 'NOT' | 'AND' | 'NULL'> = { start: 'NOT', finish: 'AND' }
     adapter.saveLevel(fixture(), progress(placements))
-    placements.start = null
+    placements.start = 'NULL'
     const result = adapter.loadLevel(fixture())
     const returnedBoard = result.placements as Record<string, unknown>
     const returnedSummary = adapter.getProgress()['two-step'] as { stars: number }
-    returnedBoard.start = null
+    returnedBoard.start = 'NULL'
     returnedSummary.stars = 0
     expect(adapter.loadLevel(fixture())).toEqual(progress())
   })
 
   it.each([
     '{broken', 'null', '[]', '{}',
-    saved({ 'two-step': progress() }, 0), saved({ 'two-step': progress() }, 2),
+    saved({ 'two-step': progress() }, 0), saved({ 'two-step': progress() }, 3),
     JSON.stringify({ version: '1', levels: { 'two-step': progress() } }),
     saved([]), saved(null),
   ])('tolerates malformed or unsupported storage without changing it: %s', (raw) => {
@@ -162,7 +176,7 @@ describe('StorageAdapter', () => {
 
   it.each([
     { missing: 'NOT' }, { start: 'MAGIC' }, { start: 'AND' }, { finish: 'OR' },
-    { start: 'NULL' }, [], null, 'NOT',
+    { start: null }, [], null, 'NOT',
   ])('clears an invalid saved board but preserves its earned progress: %j', (placements) => {
     const storage = new MemoryStorage()
     storage.data.set(PROGRESS_STORAGE_KEY, saved({ 'two-step': { ...progress(), placements } }))

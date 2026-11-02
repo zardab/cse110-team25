@@ -61,15 +61,19 @@ JSON text or a parsed definition. It first calls the C.1 loader for schema,
 reference, pin, and cycle validation. It then searches complete gate placements
 in the compiled execution order, using Track A's `evaluateGate` functions.
 Each slot must receive an allowed gate with matching arity, and the assignment
-cannot exceed the palette counts. One assignment must satisfy every authored
-truth-table row and every primary output. Authors should include all input
-combinations needed to specify their puzzle; the linter does not invent targets
-for omitted rows. Unused palette gates are permitted, but every slot must be filled.
+cannot exceed the palette counts. The current contract uses a `targetOutputs`
+vector evaluated for supplied primary inputs, rather than truth-table rows.
+Pass `{ primaryInputs: { in_A: 1, in_B: 0 } }` to check a particular runtime input
+combination. When omitted, the offline search finds one input combination and
+one complete placement that reach all target outputs together. This existential
+check does not establish that every possible input combination is solvable.
+Unused palette gates are permitted, but every slot must be filled. Starting
+assignments are editable board state; the search considers all allowed placements.
 
-On success it returns `{ levelId, solution }`; this witness placement is for
+On success it returns `{ levelId, solution, primaryInputs }`; this witness is for
 offline verification and is not saved as player progress. Wiring/schema errors
 remain `LevelValidationError`; impossible assignments throw `LevelLintError`.
-The search stops at one million candidate placements by default. Exceeding the
+The search stops at one million input-binding and gate-placement steps by default. Exceeding the
 limit fails validation with an explicit "solvability is unproven" message,
 rather than claiming the level is impossible. Small levels can be checked
 exhaustively; larger offline callers can pass `{ maxSearchSteps: number }`.
@@ -78,6 +82,7 @@ exhaustively; larger offline callers can pass `{ maxSearchSteps: number }`.
 npm run lint:levels
 npm run lint:levels -- path/to/level.json
 npm run lint:levels -- path/to/levels-directory
+npm run lint:levels -- path/to/level.json --inputs '{"in_A":1,"in_B":0}'
 ```
 
 The default directory is `src/content/levels/`, which includes a solvable AND
@@ -99,7 +104,7 @@ Persist only user progress and saved placements, with a schema version. Do not p
 ### C.3 Storage Adapter
 
 `src/persistence/storageAdapter.ts` exports `StorageAdapter`, `StorageLike`,
-`LevelProgress`, and `LevelProgressSummary`. It imports the existing circuit
+`SavedPlacements`, `LevelProgress`, and `LevelProgressSummary`. It imports the existing circuit
 types and loader's gate-name check. It has no dependency on Track B's store.
 The versioned format is defined in the shared implementation contract.
 
@@ -110,10 +115,14 @@ const storage = new StorageAdapter()
 const summaries = storage.getProgress() // Level menu: completed status and stars.
 const restored = storage.loadLevel(level) // Requires a compiled LevelConfig.
 // Track B can apply restored.placements through its own state logic.
+// Snapshot current slot assignments using the shared AssignedGate type.
+const placements = Object.fromEntries(Object.entries(level.slots).map(([id, slot]) =>
+  [id, slot.assignedGate],
+))
 const saved = storage.saveLevel(level, {
   completed: true,
   stars: 3,
-  placements: assignedGates,
+  placements,
 })
 // A false result means saving was unavailable or the supplied progress was invalid.
 console.log(summaries, restored, saved)
@@ -128,7 +137,7 @@ so sequential saves from different adapter instances preserve other levels.
 
 Stars are integers from 0 through 3. Saved completion and best stars never
 decrease during replay; the latest valid placements replace the previous board.
-Empty boards, partial boards, and explicit `null` placements are supported.
+Empty boards, partial boards, and explicit `"NULL"` placements are supported.
 Invalid save requests leave existing storage unchanged. Use `removeLevel(id)`
 to reset one level's achievements and board, or `clear()` to reset this game's
 progress. Neither operation clears unrelated localStorage keys.
@@ -138,7 +147,9 @@ excess inventory clears the whole saved board instead of applying a partial
 repair. Valid earned achievements remain available. Malformed level summaries
 are ignored without discarding other valid summaries. Malformed JSON and
 unsupported schema versions return safe defaults and remain untouched by reads;
-an explicit successful save starts a new version-1 document. The adapter makes
+an explicit successful save starts a version-2 document. Version 1 is supported:
+its JavaScript `null` assignments are converted to `"NULL"` in returned data,
+without rewriting storage until the next successful save. The adapter makes
 no claim that stored completion/stars were earned legitimately and does not
 recompute scoring; the game supplies those values after evaluation.
 
@@ -148,7 +159,7 @@ invalid boards, malformed and older data, storage failures, and key isolation.
 
 ## Tests Before Integration
 
-- Load the documented sample after changing its difficulty to `HARD`.
+- Load a current-schema JSON fixture and pass it to the team evaluator with primary input values.
 - Reject malformed levels, unknown sources, invalid arity, and cycles.
 - Assert deterministic execution order for a known DAG.
 - Verify missing palette keys normalize to zero.

@@ -25,6 +25,13 @@ evaluateCircuit(
 
 Callers normally omit `primaryInputs`, and the evaluator uses the level's `inputValues`. An explicit argument overrides them (for example, in tests). The result's `wireStates` describe the primary input values that were used. `isComplete` is true only when every slot has an assigned gate other than `"NULL"`. `isSolved` is true only when the board is complete and every declared primary output matches its value in `targetOutputs` for the supplied primary inputs. A `"NULL"` slot and its downstream outputs are `FLOATING`; a gate with any floating input produces a floating output.
 
+Track C's offline linter follows this target-output contract. Supplying
+`primaryInputs` in its options searches for a complete placement for exactly
+those inputs. Without supplied values it finds one placement and one binary
+input combination that reach the targets, returning both as a witness. That
+default does not claim solvability for all possible inputs. Input enumeration
+and gate choices share a bounded search budget.
+
 ## Game State Boundary
 
 Track B owns the store and exposes `getState`, `dispatch`, and `subscribe`. Actions are:
@@ -47,18 +54,18 @@ Track C owns a versioned storage format and adapter. Persist level progress and 
 `src/persistence/storageAdapter.ts` exposes `StorageAdapter` with `getProgress`,
 `loadLevel`, `saveLevel`, `removeLevel`, and `clear`. Browser storage is the default;
 tests and other callers may inject `StorageLike` or `null`. Track B passes its
-current `AssignedGates` to the adapter and applies restored placements through
+slot assignments as `SavedPlacements` to the adapter and applies restored placements through
 its own state logic. The adapter does not mutate the store or evaluate the board.
 
-The storage key is `cse110-team25:progress`. Version 1 stores this shape:
+The storage key is `cse110-team25:progress`. Version 2 stores this shape:
 
 ```ts
-type SavedProgressV1 = {
-  version: 1
+type SavedProgressV2 = {
+  version: 2
   levels: Record<string, {
     completed: boolean
     stars: number // integer from 0 through 3
-    placements: AssignedGates
+    placements: Readonly<Record<string, AssignedGate>> // empty slot = "NULL"
   }>
 }
 ```
@@ -70,7 +77,9 @@ IDs, gate types, pin arity, slot restrictions, and palette counts against the
 current level. If any placement is invalid, it returns an empty board while
 preserving valid completion/stars. Absent or unsupported data returns
 `{ completed: false, stars: 0, placements: {} }`. Reads never rewrite saved data.
-No migration from an older version is defined yet. `getProgress()` returns only
+Version-1 placements using JavaScript `null` are normalized to `"NULL"` on read,
+and the next successful save writes version 2. Other versions return safe defaults.
+`getProgress()` returns only
 completion/star summaries; board restoration always requires a loaded level.
 `removeLevel` resets one level, and `clear` removes only the adapter's own key.
 

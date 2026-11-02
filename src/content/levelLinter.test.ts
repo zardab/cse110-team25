@@ -1,111 +1,102 @@
 import { describe, expect, it } from 'vitest'
+import type { PrimaryInputValues } from '../types/circuit'
+import { evaluateCircuit } from '../simulation/evaluateCircuit'
 import { LevelLintError, lintLevel } from './levelLinter'
-import { LevelValidationError } from './levelLoader'
+import { LevelValidationError, loadLevel } from './levelLoader'
 
 function fixture() {
   return {
     id: 'and-puzzle', title: 'Build AND', difficulty: 'EASY',
-    availableGatePalette: { AND: 1, OR: 1, XOR: 1 },
-    primaryInputs: ['a', 'b'], primaryOutputs: ['y'],
+    availableGatePalette: { AND: 1, NAND: 1, OR: 1 },
+    primaryInputs: ['a', 'b'], primaryOutputs: ['y'], targetOutputs: { y: 1 },
     slots: {
       output: {
-        id: 'output', allowedGates: ['OR', 'XOR', 'AND'],
+        id: 'output', allowedGates: ['AND'], assignedGate: 'NULL',
         inputs: [
           { sourceType: 'PRIMARY_INPUT', sourceId: 'a' },
           { sourceType: 'PRIMARY_INPUT', sourceId: 'b' },
-        ],
-        outputWireId: 'y',
+        ], outputWireId: 'y',
       },
-    },
-    truthTableTarget: [
-      { inputs: { a: 0, b: 0 }, expected: { y: 0 } },
-      { inputs: { a: 0, b: 1 }, expected: { y: 0 } },
-      { inputs: { a: 1, b: 0 }, expected: { y: 0 } },
-      { inputs: { a: 1, b: 1 }, expected: { y: 1 } },
-    ],
-    hints: [],
+    }, hints: [],
   }
 }
 
+function twoStep() {
+  const level = fixture()
+  return { ...level, availableGatePalette: { AND: 1, OR: 1 }, slots: {
+    finish: { id: 'finish', assignedGate: 'NULL', allowedGates: ['AND'], outputWireId: 'y', inputs: [
+      { sourceType: 'SLOT_OUTPUT', sourceId: 'start' },
+      { sourceType: 'SLOT_OUTPUT', sourceId: 'start' },
+    ] },
+    start: { ...level.slots.output, id: 'start', outputWireId: 'middle', allowedGates: ['AND', 'OR'] },
+  } }
+}
+
 describe('lintLevel', () => {
-  it('finds one assignment that satisfies all rows, from JSON text or an object', () => {
-    const expected = { levelId: 'and-puzzle', solution: { output: 'AND' } }
-    expect(lintLevel(fixture())).toEqual(expected)
-    expect(lintLevel(JSON.stringify(fixture()))).toEqual(expected)
+  it('returns a placement and input values accepted by the current evaluator', () => {
+    const authored = fixture()
+    const result = lintLevel(authored)
+    expect(result).toEqual({ levelId: 'and-puzzle', solution: { output: 'AND' }, primaryInputs: { a: 1, b: 1 } })
+    expect(lintLevel(JSON.stringify(authored))).toEqual(result)
+    const compiled = loadLevel(authored)
+    const slots = Object.fromEntries(Object.entries(compiled.slots).map(([id, slot]) =>
+      [id, { ...slot, assignedGate: result.solution[id] }],
+    ))
+    expect(evaluateCircuit({ ...compiled, slots }, result.primaryInputs).isSolved).toBe(true)
   })
 
-  it('does not mutate the level, palette, or target rows', () => {
+  it('checks supplied inputs without substituting different values', () => {
+    expect(() => lintLevel(fixture(), { primaryInputs: { a: 0, b: 0 } })).toThrow('for the supplied primary inputs')
+    expect(lintLevel(fixture(), { primaryInputs: { a: 1, b: 1 } }).solution).toEqual({ output: 'AND' })
+  })
+
+  it('does not mutate level data or caller-supplied inputs', () => {
     const level = fixture()
+    const inputs = { a: 1, b: 1 } as const
     const before = structuredClone(level)
-    lintLevel(level)
+    lintLevel(level, { primaryInputs: inputs })
     expect(level).toEqual(before)
+    expect(inputs).toEqual({ a: 1, b: 1 })
   })
 
-  it('requires the same gate assignment across every row', () => {
+  it('honors slot restrictions even when another palette gate could solve the target', () => {
     const level = fixture()
-    level.availableGatePalette.AND = 0
-    expect(() => lintLevel(level)).toThrow('no complete solvable assignment')
+    level.slots.output.allowedGates = ['NAND']
+    expect(() => lintLevel(level, { primaryInputs: { a: 1, b: 1 } })).toThrow(LevelLintError)
   })
 
-  it('honors slot restrictions even when a solving gate exists in the palette', () => {
-    const level = fixture()
-    level.slots.output.allowedGates = ['OR']
-    expect(() => lintLevel(level)).toThrow(LevelLintError)
-  })
-
-  it('allows unrestricted slots but filters gate arity', () => {
+  it('supports unrestricted slots while filtering gate arity', () => {
     const level = fixture()
     const { allowedGates, ...output } = level.slots.output
     expect(allowedGates).toContain('AND')
-    expect(lintLevel({ ...level, availableGatePalette: { NOT: 2, AND: 1 },
-      slots: { output },
-    }).solution).toEqual({ output: 'AND' })
+    expect(lintLevel({ ...level, availableGatePalette: { NOT: 2, AND: 1 }, slots: { output } }).solution)
+      .toEqual({ output: 'AND' })
   })
 
-  function twoStep() {
-    const level = fixture()
-    return { ...level, availableGatePalette: { AND: 1, OR: 1 }, slots: {
-      // Authored in reverse dependency order to exercise the compiled DAG.
-      finish: { id: 'finish', allowedGates: ['AND'], outputWireId: 'y', inputs: [
-        { sourceType: 'SLOT_OUTPUT', sourceId: 'start' },
-        { sourceType: 'SLOT_OUTPUT', sourceId: 'start' },
-      ] },
-      start: { ...level.slots.output, id: 'start', outputWireId: 'middle', allowedGates: ['AND', 'OR'] },
-    }, truthTableTarget: level.truthTableTarget.map((row) => ({
-      ...row, expected: { y: row.inputs.a === 1 || row.inputs.b === 1 ? 1 : 0 },
-    })) }
-  }
-
-  it('backtracks and restores inventory when an earlier gate uses the final slot’s gate', () => {
-    expect(lintLevel(twoStep()).solution).toEqual({ start: 'OR', finish: 'AND' })
+  it('backtracks and restores gate inventory across branches', () => {
+    expect(lintLevel(twoStep(), { primaryInputs: { a: 1, b: 0 } }).solution)
+      .toEqual({ start: 'OR', finish: 'AND' })
   })
 
-  it('rejects a level that needs more gates than the palette contains', () => {
+  it('rejects insufficient inventory, including slots outside output dependency paths', () => {
     expect(() => lintLevel({ ...twoStep(), availableGatePalette: { AND: 1 } }))
+      .toThrow('no complete solvable assignment')
+    const level = fixture()
+    const extra = { ...level.slots.output, id: 'extra', outputWireId: 'unused' }
+    expect(() => lintLevel({ ...level, availableGatePalette: { AND: 1 }, slots: { ...level.slots, extra } }))
       .toThrow('no complete solvable assignment')
   })
 
-  it('requires enough inventory to fill slots outside an output dependency path', () => {
+  it('requires all outputs to match for one shared input assignment', () => {
     const level = fixture()
-    const extra = { ...level.slots.output, id: 'extra', outputWireId: 'unused' }
-    expect(() => lintLevel({ ...level, availableGatePalette: { AND: 1 },
-      slots: { ...level.slots, extra },
-    })).toThrow('no complete solvable assignment')
-  })
-
-  it('checks every primary output', () => {
-    const level = fixture()
-    const extra = { id: 'invert', allowedGates: ['NOT'], outputWireId: 'z', inputs: [
+    const invert = { id: 'invert', assignedGate: 'NULL', allowedGates: ['NOT'], outputWireId: 'z', inputs: [
       { sourceType: 'PRIMARY_INPUT', sourceId: 'a' },
     ] }
-    const multiple = { ...level, primaryOutputs: ['y', 'z'],
-      availableGatePalette: { AND: 1, NOT: 1 }, slots: { ...level.slots, invert: extra },
-      truthTableTarget: level.truthTableTarget.map((row) => ({
-        ...row, expected: { ...row.expected, z: row.inputs.a === 0 ? 1 : 0 },
-      })),
+    const multiple = { ...level, primaryOutputs: ['y', 'z'], targetOutputs: { y: 1, z: 0 },
+      availableGatePalette: { AND: 1, NOT: 1 }, slots: { ...level.slots, invert },
     }
     expect(lintLevel(multiple).solution).toEqual({ invert: 'NOT', output: 'AND' })
-    multiple.truthTableTarget[0].expected.z = 0
+    multiple.targetOutputs.z = 1
     expect(() => lintLevel(multiple)).toThrow('no complete solvable assignment')
   })
 
@@ -116,16 +107,11 @@ describe('lintLevel', () => {
 
   it.each([
     ['disconnected pin', [{ sourceType: 'PRIMARY_INPUT', sourceId: 'missing' }], 'sourceId'],
-    ['self cycle', [
-      { sourceType: 'SLOT_OUTPUT', sourceId: 'output' },
-      { sourceType: 'PRIMARY_INPUT', sourceId: 'a' },
-    ], 'cycle'],
+    ['self cycle', [{ sourceType: 'SLOT_OUTPUT', sourceId: 'output' }], 'cycle'],
     ['missing pin', [], 'inputs'],
   ])('reuses loader validation for %s', (_name, inputs, message) => {
     const level = fixture()
-    const invalid = { ...level, slots: { output: { ...level.slots.output,
-      allowedGates: undefined, inputs,
-    } } }
+    const invalid = { ...level, slots: { output: { ...level.slots.output, allowedGates: undefined, inputs } } }
     expect(() => lintLevel(invalid)).toThrow(LevelValidationError)
     expect(() => lintLevel(invalid)).toThrow(message)
   })
@@ -134,11 +120,18 @@ describe('lintLevel', () => {
     expect(() => lintLevel('{')).toThrow('invalid JSON syntax')
   })
 
-  it('reports a search limit as unproven rather than unsolvable', () => {
-    expect(() => lintLevel(twoStep(), { maxSearchSteps: 1 })).toThrow('solvability is unproven')
+  it('bounds placement and input searches without claiming an unproven level is impossible', () => {
+    expect(() => lintLevel(twoStep(), { maxSearchSteps: 1, primaryInputs: { a: 1, b: 0 } }))
+      .toThrow('solvability is unproven')
+    expect(() => lintLevel(fixture(), { maxSearchSteps: 1 })).toThrow('solvability is unproven')
   })
 
-  it.each([0, -1, 1.5, Infinity])('rejects an invalid search limit %s', (maxSearchSteps) => {
+  it.each([0, -1, 1.5, Infinity])('rejects invalid search limit %s', (maxSearchSteps) => {
     expect(() => lintLevel(fixture(), { maxSearchSteps })).toThrow('positive safe integer')
+  })
+
+  it.each([null, [], {}, { a: 0 }, { a: true, b: 0 }, { a: 0, b: 0, extra: 1 }])('rejects invalid supplied primary inputs %j', (inputs) => {
+      expect(() => lintLevel(fixture(), { primaryInputs: inputs as unknown as PrimaryInputValues }))
+        .toThrow('exactly the declared input IDs with binary values')
   })
 })

@@ -31,7 +31,14 @@ describe('level linter CLI', () => {
     mkdirSync(path.join(folder, 'nested'), { recursive: true })
     writeFileSync(path.join(folder, 'valid.json'), JSON.stringify(valid))
     writeFileSync(path.join(folder, 'bad.json'), '{')
-    const impossible = { ...valid, availableGatePalette: { OR: 1 } }
+    // Both slots have identical inputs and gates, but contradictory targets.
+    const impossible = { ...valid, availableGatePalette: { AND: 2 },
+      primaryOutputs: ['out_Y', 'out_Z'], targetOutputs: { out_Y: 1, out_Z: 0 },
+      slots: {
+        slot_1: { ...valid.slots.slot_1, allowedGates: ['AND'] },
+        slot_2: { ...valid.slots.slot_1, id: 'slot_2', allowedGates: ['AND'], outputWireId: 'out_Z' },
+      },
+    }
     writeFileSync(path.join(folder, 'nested/impossible.json'), JSON.stringify(impossible))
     const result = run(folder)
     expect(result.status).toBe(1)
@@ -54,5 +61,16 @@ describe('level linter CLI', () => {
     const result = run(file, file)
     expect(result.status).toBe(0)
     expect(result.stdout).toContain('1 level file(s); 0 failure(s)')
+  })
+
+  it('supports fixed primary inputs for the runtime target-output contract', () => {
+    const file = path.join(temp, 'and-only.json')
+    writeFileSync(file, JSON.stringify({ ...valid, availableGatePalette: { AND: 1 } }))
+    expect(run(file, '--inputs', '{"in_A":1,"in_B":1}').status).toBe(0)
+    const failed = run(file, '--inputs', '{"in_A":0,"in_B":0}')
+    expect(failed.status).toBe(1)
+    expect(failed.stderr).toContain('for the supplied primary inputs')
+    expect(run(file, '--inputs', '{broken').status).toBe(1)
+    expect(run(file, '--inputs').status).toBe(1)
   })
 })
