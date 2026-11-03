@@ -1,7 +1,7 @@
 // src/ui/LevelScreen.ts
 import { GameBoardView } from './components/GameBoardView';
-import { evaluateCircuit } from '../simulation/evaluateCircuit';
-import type { AssignedGate, GateType, LevelConfig } from '../types/circuit';
+import { createStore, type GameState, type GameStore } from '../state/store';
+import type { GateType, LevelConfig } from '../types/circuit';
 
 const LEVEL_1_CONFIG: LevelConfig = {
   id: 'level_01_intro',
@@ -30,59 +30,45 @@ const LEVEL_1_CONFIG: LevelConfig = {
 
 const TRAY_GATES: GateType[] = ['OR', 'AND'];
 
-// Board changes replace the slot value; connections are never touched.
-function withGate(level: LevelConfig, slotId: string, gate: AssignedGate): LevelConfig {
-  return { ...level, slots: { ...level.slots, [slotId]: { ...level.slots[slotId], assignedGate: gate } } };
-}
-
 export class LevelScreen {
-  private level: LevelConfig = LEVEL_1_CONFIG;
+  private store!: GameStore;
+  private unsubscribe = () => {};
   private boardView: GameBoardView;
 
   constructor() {
     const container = document.getElementById('konva-container') as HTMLDivElement;
 
-    // Initialize Vanilla Konva Canvas Renderer
+    // Initialize Vanilla Konva Canvas Renderer. The store validates every move,
+    // so untrusted drag-and-drop data can be dispatched as is.
     this.boardView = new GameBoardView({
       container,
       levelConfig: LEVEL_1_CONFIG,
-      onPlaceGate: (slotId, gate) => this.placeGate(slotId, gate),
-      onRemoveGate: (slotId) => this.removeGate(slotId),
+      onPlaceGate: (slotId, gate) => this.store.dispatch({ type: 'PLACE_GATE', slotId, gate }),
+      onRemoveGate: (slotId) => this.store.dispatch({ type: 'REMOVE_GATE', slotId }),
     });
 
     this.setupHeaderAndTray();
-    this.update();
+    this.loadLevel(LEVEL_1_CONFIG);
   }
 
-  // Gates arrive from drag-and-drop data, so treat them as untrusted: reject
-  // unknown slots and gates the slot does not allow instead of evaluating them.
-  private placeGate(slotId: string, gate: GateType) {
-    if (!Object.hasOwn(this.level.slots, slotId)) return;
-    const { allowedGates } = this.level.slots[slotId];
-    if (allowedGates && !allowedGates.includes(gate)) return;
-    this.level = withGate(this.level, slotId, gate);
-    this.update();
+  // The store has no reset action, so starting a level over means a fresh store.
+  private loadLevel(level: LevelConfig) {
+    this.unsubscribe();
+    this.store = createStore(level);
+    this.unsubscribe = this.store.subscribe((state) => this.render(state));
+    // Listeners only hear about later actions, so draw the starting state now.
+    this.render(this.store.getState());
   }
 
-  private removeGate(slotId: string) {
-    if (!Object.hasOwn(this.level.slots, slotId)) return;
-    this.level = withGate(this.level, slotId, 'NULL');
-    this.update();
-  }
-
-  // Called on state changes to recalculate and redraw
-  private update() {
-    const simResult = evaluateCircuit(this.level);
-    this.boardView.render(this.level, simResult.wireStates);
-    this.renderTrayUI();
+  // Hard mode has no result until a check action exists, so wires stay unlit.
+  private render(state: GameState) {
+    this.boardView.render(state.level, state.result?.wireStates ?? {});
+    this.renderTrayUI(state);
   }
 
   private setupHeaderAndTray() {
     // Reset Button Event
-    document.getElementById('reset-btn')?.addEventListener('click', () => {
-      this.level = LEVEL_1_CONFIG;
-      this.update();
-    });
+    document.getElementById('reset-btn')?.addEventListener('click', () => this.loadLevel(LEVEL_1_CONFIG));
 
     // Render 12 progress dots
     const dotsContainer = document.getElementById('progress-dots');
@@ -93,13 +79,13 @@ export class LevelScreen {
     }
   }
 
-  private renderTrayUI() {
+  private renderTrayUI(state: GameState) {
     const grid = document.getElementById('palette-grid');
     if (!grid) return;
 
     grid.innerHTML = TRAY_GATES
       .map((gate) => {
-        const isSelected = this.level.slots['slot_1'].assignedGate === gate;
+        const isSelected = state.level.slots['slot_1'].assignedGate === gate;
         return `
           <div 
             class="gate-card" 
@@ -121,7 +107,7 @@ export class LevelScreen {
     grid.querySelectorAll('.gate-card').forEach((card) => {
       const gate = card.getAttribute('data-gate') as GateType;
 
-      card.addEventListener('click', () => this.placeGate('slot_1', gate));
+      card.addEventListener('click', () => this.store.dispatch({ type: 'PLACE_GATE', slotId: 'slot_1', gate }));
       card.addEventListener('dragstart', (e) => {
         (e as DragEvent).dataTransfer?.setData('gateType', gate);
       });
