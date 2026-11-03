@@ -1,6 +1,6 @@
 // src/ui/components/GameBoardView.ts
 import Konva from 'konva';
-import { LevelConfig, SignalState, AssignedGates, GateType } from '../../types/circuit';
+import type { LevelConfig, SignalState, GateType } from '../../types/circuit';
 
 interface GameBoardViewOptions {
   container: HTMLDivElement;
@@ -45,14 +45,15 @@ export class GameBoardView {
   }
 
   // --- Render Method ---
-  public render(assignedGates: AssignedGates, wireStates: Record<string, SignalState> = {}) {
+  public render(level: LevelConfig, wireStates: Record<string, SignalState> = {}) {
     // Clear previous shapes for clean redrawing
     this.layer.destroyChildren();
 
     const isHighA = wireStates['in_A'] === 1;
     const isHighB = wireStates['in_B'] === 1;
     const outputSignal = wireStates['out_Y'] === 1;
-    const currentGate = assignedGates['slot_1'];
+    const assigned = level.slots['slot_1'].assignedGate;
+    const currentGate = assigned === 'NULL' ? null : assigned;
 
     // Pin Anchor Coordinates
     const slotPin0 = { x: this.slotPos.x, y: this.slotPos.y + 25 };

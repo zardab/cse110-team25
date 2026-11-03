@@ -32,6 +32,7 @@ export interface LevelDefinition {
   readonly availableGatePalette: Partial<Record<GateType, number>>;
   readonly primaryInputs: ReadonlyArray<string>;
   readonly primaryOutputs: ReadonlyArray<string>;
+  readonly inputValues: PrimaryInputValues;
   readonly targetOutputs: Readonly<Record<string, 0 | 1>>;
   readonly slots: Record<string, CircuitSlot>;
   readonly hints: ReadonlyArray<{

@@ -15,49 +15,18 @@ const GATE_DESCRIPTIONS: Partial<Record<GateType, string>> = {
   NOT: 'NOT: Inverts the input (0 becomes 1, 1 becomes 0).',
 };
 
-// Mock backend evaluator
-const evaluateCircuitState = (
-  _levelConfig: LevelConfig,
-  assignedGates: AssignedGates
-): SimulationResult => {
-  const in_A = 1;
-  const in_B = 0;
-  const gate = assignedGates['slot_1'];
-
-  let out_Y: SignalState = 'FLOATING';
-
-  if (gate === 'OR') out_Y = (in_A || in_B) as SignalState;
-  if (gate === 'AND') out_Y = (in_A && in_B) as SignalState;
-  if (gate === 'NOT') out_Y = in_A ? 0 : 1;
-
-  const isSolved = out_Y === 1;
-
-  return {
-    isComplete: Boolean(gate),
-    isSolved,
-    wireStates: { in_A, in_B, out_Y },
-  };
-};
+import { evaluateCircuit } from '../simulation/evaluateCircuit';
+import type { AssignedGate, GateType, LevelConfig } from '../types/circuit';
 
 const LEVEL_1_CONFIG: LevelConfig = {
   id: 'level_01_intro',
   title: 'Level 1: The OR Gate',
   difficulty: 'EASY',
-
-  availableGatePalette: {
-    OR: 1,
-    AND: 1,
-    NOT: 1,
-    XOR: 0,
-    NAND: 0,
-    NOR: 0,
-    XNOR: 0,
-  },
-
+  availableGatePalette: { OR: 1, AND: 1, NOT: 1, XOR: 0, NAND: 0, NOR: 0, XNOR: 0 },
   primaryInputs: ['in_A', 'in_B'],
   primaryOutputs: ['out_Y'],
+  inputValues: { in_A: 1, in_B: 0 },
   targetOutputs: { out_Y: 1 },
-
   executionOrder: ['slot_1'],
 
   slots: {
@@ -72,12 +41,18 @@ const LEVEL_1_CONFIG: LevelConfig = {
       outputWireId: 'out_Y',
     },
   },
-
   hints: [],
 };
 
+const TRAY_GATES: GateType[] = ['OR', 'AND'];
+
+// Board changes replace the slot value; connections are never touched.
+function withGate(level: LevelConfig, slotId: string, gate: AssignedGate): LevelConfig {
+  return { ...level, slots: { ...level.slots, [slotId]: { ...level.slots[slotId], assignedGate: gate } } };
+}
+
 export class LevelScreen {
-  private assignedGates: AssignedGates = { slot_1: null };
+  private level: LevelConfig = LEVEL_1_CONFIG;
   private boardView: GameBoardView;
   private resetButton: HTMLElement | null = null;
 
@@ -102,6 +77,8 @@ export class LevelScreen {
     this.update();
   }
 
+  // REPLACE WITH PLACE GATE/REMOVE GATE
+  //placeholders
   private placeGate(slotId: string, gate: GateType): void {
     this.assignedGates = {
       ...this.assignedGates,
