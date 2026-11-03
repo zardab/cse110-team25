@@ -1,4 +1,3 @@
-// src/ui/components/GameBoardView.ts
 import Konva from 'konva';
 import type { LevelConfig, SignalState, GateType } from '../../types/circuit';
 
@@ -33,8 +32,8 @@ export class GameBoardView {
     // 1. Initialize Stage and Main Layer
     this.stage = new Konva.Stage({
       container: this.container,
-      width: CANVAS_WIDTH,
-      height: CANVAS_HEIGHT,
+      width: CANVAS_WIDTH || 1000,
+      height: CANVAS_HEIGHT || 550,
     });
 
     this.layer = new Konva.Layer();
@@ -64,7 +63,7 @@ export class GameBoardView {
     const background = new Konva.Rect({
       width: CANVAS_WIDTH,
       height: CANVAS_HEIGHT,
-      fill: '#FFFFFF',
+      // fill: '#FFFFFF',
       cornerRadius: 20,
     });
     this.layer.add(background);

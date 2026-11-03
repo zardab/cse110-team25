@@ -1,4 +1,3 @@
-// src/ui/LevelScreen.ts
 import { GameBoardView } from './components/GameBoardView';
 import { evaluateCircuit } from '../simulation/evaluateCircuit';
 import type { AssignedGate, GateType, LevelConfig } from '../types/circuit';
