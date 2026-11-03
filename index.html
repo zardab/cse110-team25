@@ -1,35 +1,13 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>Circuit Logic Game</title>
-    <link rel="stylesheet" href="/src/index.css" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>game-dev</title>
   </head>
   <body>
-    <div class="app-container">
-      <header class="level-header">
-        <div id="nav-menu">☰</div>
-        <div class="level-progress-dots" id="progress-dots"></div>
-        <button id="reset-btn" style="background:none; border:none; cursor:pointer;">🔄</button>
-      </header>
-
-      <div class="workspace-card">
-        <div class="level-badge-container">
-          <div class="level-badge">Level 1 / 12</div>
-        </div>
-        
-        <!-- TARGET CANVAS DIV -->
-        <div id="konva-container" style="width: 850px; height: 420px;"></div>
-      </div>
-
-      <footer class="palette-container">
-        <div class="palette-header">
-          <span>CLICK OR DRAG A GATE TO PLACE IN SLOT</span>
-        </div>
-        <div class="palette-grid" id="palette-grid"></div>
-      </footer>
-    </div>
-
-    <script type="module" src="/src/main.ts"></script>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

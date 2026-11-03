@@ -1,6 +1,10 @@
+
 export type GateType = 'AND' | 'OR' | 'NOT' | 'XOR' | 'NAND' | 'NOR' | 'XNOR';
 
 export type AssignedGate = GateType | 'NULL';
+
+// Used by the Level 1 UI for its current gate selections
+export type AssignedGates = Record<string, GateType | null>;
 
 export type Difficulty = 'EASY' | 'HARD';
 
