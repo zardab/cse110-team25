@@ -1,6 +1,6 @@
 import { GameBoardView } from './components/GameBoardView';
-import { evaluateCircuit } from '../simulation/evaluateCircuit';
-import type { AssignedGate, GateType, LevelConfig } from '../types/circuit';
+import { createStore, type GameState, type GameStore } from '../state/store';
+import type { GateType, LevelConfig } from '../types/circuit';
 
 const LEVEL_1_CONFIG: LevelConfig = {
   id: 'level_01_intro',
@@ -27,61 +27,45 @@ const LEVEL_1_CONFIG: LevelConfig = {
   hints: [],
 };
 
-const TRAY_GATES: GateType[] = ['OR', 'AND'];
-
-// Board changes replace the slot value; connections are never touched.
-function withGate(level: LevelConfig, slotId: string, gate: AssignedGate): LevelConfig {
-  return { ...level, slots: { ...level.slots, [slotId]: { ...level.slots[slotId], assignedGate: gate } } };
-}
-
 export class LevelScreen {
-  private level: LevelConfig = LEVEL_1_CONFIG;
+  private store!: GameStore;
+  private unsubscribe = () => {};
   private boardView: GameBoardView;
 
   constructor() {
     const container = document.getElementById('konva-container') as HTMLDivElement;
 
-    // Initialize Vanilla Konva Canvas Renderer
+    // Initialize Vanilla Konva Canvas Renderer. The store validates every move,
+    // so untrusted drag-and-drop data can be dispatched as is.
     this.boardView = new GameBoardView({
       container,
       levelConfig: LEVEL_1_CONFIG,
-      onPlaceGate: (slotId, gate) => this.placeGate(slotId, gate),
-      onRemoveGate: (slotId) => this.removeGate(slotId),
+      onPlaceGate: (slotId, gate) => this.store.dispatch({ type: 'PLACE_GATE', slotId, gate }),
+      onRemoveGate: (slotId) => this.store.dispatch({ type: 'REMOVE_GATE', slotId }),
     });
 
     this.setupHeaderAndTray();
-    this.update();
+    this.loadLevel(LEVEL_1_CONFIG);
   }
 
-  // Gates arrive from drag-and-drop data, so treat them as untrusted: reject
-  // unknown slots and gates the slot does not allow instead of evaluating them.
-  private placeGate(slotId: string, gate: GateType) {
-    if (!Object.hasOwn(this.level.slots, slotId)) return;
-    const { allowedGates } = this.level.slots[slotId];
-    if (allowedGates && !allowedGates.includes(gate)) return;
-    this.level = withGate(this.level, slotId, gate);
-    this.update();
+  // The store has no reset action, so starting a level over means a fresh store.
+  private loadLevel(level: LevelConfig) {
+    this.unsubscribe();
+    this.store = createStore(level);
+    this.unsubscribe = this.store.subscribe((state) => this.render(state));
+    // Listeners only hear about later actions, so draw the starting state now.
+    this.render(this.store.getState());
   }
 
-  private removeGate(slotId: string) {
-    if (!Object.hasOwn(this.level.slots, slotId)) return;
-    this.level = withGate(this.level, slotId, 'NULL');
-    this.update();
-  }
-
-  // Called on state changes to recalculate and redraw
-  private update() {
-    const simResult = evaluateCircuit(this.level);
-    this.boardView.render(this.level, simResult.wireStates);
-    this.renderTrayUI();
+  // Hard mode has no result until a check action exists, so wires stay unlit.
+  private render(state: GameState) {
+    this.boardView.render(state.level, state.result?.wireStates ?? {});
+    this.renderTrayUI(state);
   }
 
   private setupHeaderAndTray() {
     // Reset Button Event
-    document.getElementById('reset-btn')?.addEventListener('click', () => {
-      this.level = LEVEL_1_CONFIG;
-      this.update();
-    });
+    document.getElementById('reset-btn')?.addEventListener('click', () => this.loadLevel(LEVEL_1_CONFIG));
 
     // Render 12 progress dots
     const dotsContainer = document.getElementById('progress-dots');
@@ -92,35 +76,44 @@ export class LevelScreen {
     }
   }
 
-  private renderTrayUI() {
+  private renderTrayUI(state: GameState) {
     const grid = document.getElementById('palette-grid');
     if (!grid) return;
 
-    grid.innerHTML = TRAY_GATES
+    // The palette never changes, so it fixes which cards show; the inventory says how many are left.
+    const trayGates = (Object.keys(state.level.availableGatePalette) as GateType[])
+      .filter((gate) => state.level.availableGatePalette[gate] > 0);
+
+    grid.innerHTML = trayGates
       .map((gate) => {
-        const isSelected = this.level.slots['slot_1'].assignedGate === gate;
+        const isSelected = state.level.slots['slot_1'].assignedGate === gate;
+        const remaining = state.inventory[gate];
+        const isEmpty = remaining <= 0;
         return `
           <div 
             class="gate-card" 
-            draggable="true" 
+            draggable="${!isEmpty}" 
             data-gate="${gate}"
+            aria-disabled="${isEmpty}"
             style="
               border: ${isSelected ? '2px solid #3B82F6' : '1px solid #E5E7EB'};
               background-color: ${isSelected ? '#EFF6FF' : '#F9FAFB'};
-              cursor: grab;
+              cursor: ${isEmpty ? 'not-allowed' : 'grab'};
+              opacity: ${isEmpty && !isSelected ? 0.4 : 1};
             "
           >
             <span style="font-weight: 700; font-size: 14px;">${gate}</span>
+            <span class="gate-count" style="font-size: 12px; color: #6B7280;">×${remaining}</span>
           </div>
         `;
       })
       .join('');
 
-    // Attach native HTML Drag & Click listeners
-    grid.querySelectorAll('.gate-card').forEach((card) => {
+    // Attach native HTML Drag & Click listeners; empty cards get none, as the store would reject them.
+    grid.querySelectorAll('.gate-card[aria-disabled="false"]').forEach((card) => {
       const gate = card.getAttribute('data-gate') as GateType;
 
-      card.addEventListener('click', () => this.placeGate('slot_1', gate));
+      card.addEventListener('click', () => this.store.dispatch({ type: 'PLACE_GATE', slotId: 'slot_1', gate }));
       card.addEventListener('dragstart', (e) => {
         (e as DragEvent).dataTransfer?.setData('gateType', gate);
       });
