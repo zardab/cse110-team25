@@ -61,11 +61,17 @@ export class LevelScreen {
   private render(state: GameState) {
     this.boardView.render(state.level, state.result?.wireStates ?? {});
     this.renderTrayUI(state);
+
+    const undoBtn = document.getElementById('undo-btn') as HTMLButtonElement | null;
+    if (undoBtn) undoBtn.disabled = !state.canUndo;
   }
 
   private setupHeaderAndTray() {
     // Reset Button Event
     document.getElementById('reset-btn')?.addEventListener('click', () => this.loadLevel(LEVEL_1_CONFIG));
+
+    // Undo Button Event: the store takes back the latest board change, if there is one
+    document.getElementById('undo-btn')?.addEventListener('click', () => this.store.dispatch({ type: 'UNDO' }));
 
     // Render 12 progress dots
     const dotsContainer = document.getElementById('progress-dots');
