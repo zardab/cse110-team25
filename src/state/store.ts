@@ -8,7 +8,20 @@ import type {
 
 export type GameAction =
   | { readonly type: 'PLACE_GATE'; readonly slotId: string; readonly gate: GateType }
-  | { readonly type: 'REMOVE_GATE'; readonly slotId: string };
+  | { readonly type: 'REMOVE_GATE'; readonly slotId: string }
+  | { readonly type: 'UNDO' };
+
+/** One accepted action, with the gates involved so the entry reads on its own. */
+export type LogEntry =
+  | {
+      readonly type: 'PLACE_GATE';
+      readonly slotId: string;
+      readonly gate: GateType;
+      /** The gate this one replaced, or 'NULL' if the slot was empty. */
+      readonly replaced: AssignedGate;
+    }
+  | { readonly type: 'REMOVE_GATE'; readonly slotId: string; readonly gate: GateType }
+  | { readonly type: 'UNDO' };
 
 export type Inventory = Readonly<Record<GateType, number>>;
 
@@ -19,6 +32,10 @@ export interface GameState {
   readonly inventory: Inventory;
   /** Latest evaluation, or null when none is current (Hard mode, until a check action exists). */
   readonly result: SimulationResult | null;
+  /** Every accepted action in order. An undo is logged too; it never erases earlier entries. */
+  readonly log: readonly LogEntry[];
+  /** Whether there is a board change for UNDO to take back. */
+  readonly canUndo: boolean;
 }
 
 export type Evaluate = (level: LevelConfig) => SimulationResult;
@@ -64,12 +81,15 @@ export function createStore(
 
   let level = startingLevel;
   let result: SimulationResult | null = isEasy ? evaluate(level) : null;
+  let log: readonly LogEntry[] = [];
+  // The state before each board change. Old states are never mutated, so keeping them is cheap.
+  const undoStack: GameState[] = [];
   const listeners = new Set<Listener>();
 
   let state = buildState();
 
   function buildState(): GameState {
-    return { level, inventory, result };
+    return { level, inventory, result, log, canUndo: undoStack.length > 0 };
   }
 
   // The action is already committed here, so a failing listener must not turn it into an
@@ -89,8 +109,10 @@ export function createStore(
   // Easy mode evaluates after every board change; Hard mode drops the stale result instead.
   // Evaluate first and commit level, inventory and result together, so an evaluator
   // that throws leaves the store exactly as it was.
-  function mutate(nextLevel: LevelConfig, nextInventory: Inventory): true {
+  function mutate(nextLevel: LevelConfig, nextInventory: Inventory, entry: LogEntry): true {
     const nextResult = isEasy ? evaluate(nextLevel) : null;
+    undoStack.push(state);
+    log = [...log, entry];
     level = nextLevel;
     inventory = nextInventory;
     result = nextResult;
@@ -109,14 +131,32 @@ export function createStore(
     // Replacing a gate returns the old one to the inventory.
     let next = adjust(inventory, gate, -1);
     if (slot.assignedGate !== 'NULL') next = adjust(next, slot.assignedGate, 1);
-    return mutate(withAssignedGate(level, slotId, gate), next);
+    return mutate(withAssignedGate(level, slotId, gate), next, {
+      type: 'PLACE_GATE',
+      slotId,
+      gate,
+      replaced: slot.assignedGate,
+    });
   }
 
   function removeGate(slotId: string): boolean {
     if (!Object.hasOwn(level.slots, slotId)) return false;
     const { assignedGate } = level.slots[slotId];
     if (assignedGate === 'NULL') return false;
-    return mutate(withAssignedGate(level, slotId, 'NULL'), adjust(inventory, assignedGate, 1));
+    return mutate(withAssignedGate(level, slotId, 'NULL'), adjust(inventory, assignedGate, 1), {
+      type: 'REMOVE_GATE',
+      slotId,
+      gate: assignedGate,
+    });
+  }
+
+  // Restoring the saved snapshot brings back the result with it, so nothing is re-evaluated.
+  function undo(): boolean {
+    const previous = undoStack.pop();
+    if (!previous) return false;
+    ({ level, inventory, result } = previous);
+    log = [...log, { type: 'UNDO' }];
+    return publish();
   }
 
   return {
@@ -127,6 +167,8 @@ export function createStore(
           return placeGate(action.slotId, action.gate);
         case 'REMOVE_GATE':
           return removeGate(action.slotId);
+        case 'UNDO':
+          return undo();
         default:
           return false;
       }
