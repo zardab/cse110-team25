@@ -22,6 +22,7 @@ window.addEventListener('DOMContentLoaded', () => {
     }
 
     // 5. Instantiate the Konva level screen
-    new LevelScreen();
+    //new LevelScreen();
+    new LevelScreen({ timed: true });
   });
 });

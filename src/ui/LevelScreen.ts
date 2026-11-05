@@ -2,6 +2,14 @@ import { GameBoardView } from './components/GameBoardView';
 import { createStore, type GameState, type GameStore } from '../state/store';
 import type { GateType, LevelConfig } from '../types/circuit';
 
+const DEFAULT_MINIGAME_DURATION_SECONDS = 15;
+
+//Added this interface to allow for optional parameters in the LevelScreen constructor (i.e. minigame timer settings)
+interface LevelScreenOptions {
+  timed?: boolean;
+  durationSeconds?: number;
+}
+
 const LEVEL_1_CONFIG: LevelConfig = {
   id: 'level_01_intro',
   title: 'Level 1: The OR Gate',
@@ -32,7 +40,24 @@ export class LevelScreen {
   private unsubscribe = () => {};
   private boardView: GameBoardView;
 
-  constructor() {
+  // Minigame timer settings
+  private readonly timed: boolean;
+  private readonly durationSeconds: number;
+
+  // Timer state
+  private timeRemaining: number;
+  private timerId: ReturnType<typeof setInterval> | null = null;
+  private gameEnded = false;
+
+  constructor(options: LevelScreenOptions = {}) {
+    this.timed = options.timed ?? false;
+    this.durationSeconds =
+      options.durationSeconds ?? DEFAULT_MINIGAME_DURATION_SECONDS;
+
+    this.timeRemaining = this.durationSeconds;
+    const timerDisplay = document.getElementById('timer-display');
+    if (timerDisplay) timerDisplay.hidden = !this.timed;
+
     const container = document.getElementById('konva-container') as HTMLDivElement;
 
     // Initialize Vanilla Konva Canvas Renderer. The store validates every move,
@@ -40,12 +65,13 @@ export class LevelScreen {
     this.boardView = new GameBoardView({
       container,
       levelConfig: LEVEL_1_CONFIG,
-      onPlaceGate: (slotId, gate) => this.store.dispatch({ type: 'PLACE_GATE', slotId, gate }),
-      onRemoveGate: (slotId) => this.store.dispatch({ type: 'REMOVE_GATE', slotId }),
+      onPlaceGate: (slotId, gate) => { if (!this.gameEnded) this.store.dispatch({ type: 'PLACE_GATE', slotId, gate }); },
+      onRemoveGate: (slotId) => { if (!this.gameEnded) this.store.dispatch({ type: 'REMOVE_GATE', slotId }); },
     });
 
     this.setupHeaderAndTray();
     this.loadLevel(LEVEL_1_CONFIG);
+    if (this.timed) this.startTimer();
   }
 
   // The store has no reset action, so starting a level over means a fresh store.
@@ -57,15 +83,62 @@ export class LevelScreen {
     this.render(this.store.getState());
   }
 
+  // Update the timer display in the UI
+  private startTimer() {
+    if (!this.timed) return;
+
+    this.stopTimer();
+    this.timeRemaining = this.durationSeconds;
+    this.gameEnded = false;
+    this.hideGameOver();
+    this.updateTimerDisplay();
+
+    this.timerId = setInterval(() => { this.timeRemaining--; this.updateTimerDisplay();
+      if (this.timeRemaining <= 0) this.finishGame(false);}, 1000);
+  }
+
+  private stopTimer() {
+    if (this.timerId !== null) clearInterval(this.timerId);
+    this.timerId = null;
+  }
+
+  private updateTimerDisplay() {
+    const timer = document.getElementById('timer-display');
+    if (timer) timer.textContent = `${this.timeRemaining}s`;
+  }
+
+  private finishGame(won: boolean) {
+    if (this.gameEnded) return;
+
+    this.gameEnded = true;
+    this.stopTimer();
+
+    const overlay = document.getElementById('game-over-overlay');
+    const title = document.getElementById('game-over-title');
+    const message = document.getElementById('game-over-message');
+
+    if (title) title.textContent = won ? 'Level Complete!' : "Time's Up!";
+    if (message) message.textContent = won ? `You finished with ${this.timeRemaining}s remaining!` : 'You ran out of time.';
+    if (overlay) overlay.hidden = false;
+  }
+
+  private hideGameOver() {
+    const overlay = document.getElementById('game-over-overlay');
+    if (overlay) overlay.hidden = true;
+  }
+
   // Hard mode has no result until a check action exists, so wires stay unlit.
   private render(state: GameState) {
     this.boardView.render(state.level, state.result?.wireStates ?? {});
     this.renderTrayUI(state);
+
+    if (this.timed && !this.gameEnded && state.result?.isSolved) this.finishGame(true);
   }
 
   private setupHeaderAndTray() {
-    // Reset Button Event
-    document.getElementById('reset-btn')?.addEventListener('click', () => this.loadLevel(LEVEL_1_CONFIG));
+    // Reset Button Events (reset level and restart timer for minigame)
+    document.getElementById('reset-btn')?.addEventListener('click', () => { this.loadLevel(LEVEL_1_CONFIG); if (this.timed) this.startTimer(); });
+    document.getElementById('restart-minigame-btn')?.addEventListener('click', () => { this.loadLevel(LEVEL_1_CONFIG); this.startTimer(); });
 
     // Render 12 progress dots
     const dotsContainer = document.getElementById('progress-dots');
@@ -113,7 +186,7 @@ export class LevelScreen {
     grid.querySelectorAll('.gate-card[aria-disabled="false"]').forEach((card) => {
       const gate = card.getAttribute('data-gate') as GateType;
 
-      card.addEventListener('click', () => this.store.dispatch({ type: 'PLACE_GATE', slotId: 'slot_1', gate }));
+      card.addEventListener('click', () => { if (!this.gameEnded) this.store.dispatch({ type: 'PLACE_GATE', slotId: 'slot_1', gate }); });
       card.addEventListener('dragstart', (e) => {
         (e as DragEvent).dataTransfer?.setData('gateType', gate);
       });
