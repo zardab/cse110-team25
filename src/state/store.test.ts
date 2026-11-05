@@ -43,6 +43,7 @@ const mockEvaluate = () => vi.fn<(level: LevelConfig) => SimulationResult>(() =>
 
 const place = (slotId: string, gate: GateType): GameAction => ({ type: 'PLACE_GATE', slotId, gate });
 const remove = (slotId: string): GameAction => ({ type: 'REMOVE_GATE', slotId });
+const undo: GameAction = { type: 'UNDO' };
 const gateIn = (store: ReturnType<typeof createStore>, slotId: string) =>
   store.getState().level.slots[slotId].assignedGate;
 
@@ -317,6 +318,134 @@ describe('createStore', () => {
       store.dispatch(place('s_and', 'AND'));
 
       expect(other).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('UNDO', () => {
+    it('takes back a place, a swap and a remove, restoring board and inventory each time', () => {
+      const store = createStore(level, mockEvaluate());
+      const states = [store.getState()];
+      store.dispatch(place('s_and', 'AND'));
+      states.push(store.getState());
+      store.dispatch(place('s_and', 'OR'));
+      states.push(store.getState());
+      store.dispatch(remove('s_and'));
+
+      for (const expected of states.reverse()) {
+        expect(store.dispatch(undo)).toBe(true);
+        expect(store.getState().level).toBe(expected.level);
+        expect(store.getState().inventory).toBe(expected.inventory);
+      }
+      expect(gateIn(store, 's_and')).toBe('NULL');
+    });
+
+    it('rejects an undo with nothing to undo and notifies no one', () => {
+      const store = createStore(level, mockEvaluate());
+      const listener = vi.fn();
+      store.subscribe(listener);
+      const before = store.getState();
+
+      expect(store.getState().canUndo).toBe(false);
+      expect(store.dispatch(undo)).toBe(false);
+      expect(store.getState()).toBe(before);
+      expect(listener).not.toHaveBeenCalled();
+    });
+
+    it('runs out once every board change has been taken back', () => {
+      const store = createStore(level, mockEvaluate());
+      store.dispatch(place('s_and', 'AND'));
+      expect(store.getState().canUndo).toBe(true);
+
+      store.dispatch(undo);
+      expect(store.getState().canUndo).toBe(false);
+      expect(store.dispatch(undo)).toBe(false);
+    });
+
+    it('does not record a rejected action as something to undo', () => {
+      const store = createStore(level, mockEvaluate());
+      store.dispatch(place('s_and', 'AND'));
+      store.dispatch(place('s_and', 'AND'));
+      store.dispatch(remove('s_free'));
+
+      store.dispatch(undo);
+      expect(gateIn(store, 's_and')).toBe('NULL');
+      expect(store.getState().canUndo).toBe(false);
+    });
+
+    it('does not record an action the evaluator threw on', () => {
+      let fail = false;
+      const store = createStore(level, () => {
+        if (fail) throw new Error('boom');
+        return mockResult;
+      });
+      fail = true;
+      expect(() => store.dispatch(place('s_and', 'AND'))).toThrow('boom');
+
+      expect(store.getState().canUndo).toBe(false);
+      expect(store.getState().log).toEqual([]);
+    });
+
+    it('restores the earlier result in Easy mode without evaluating again', () => {
+      const evaluate = vi.fn((l: LevelConfig): SimulationResult => ({
+        ...mockResult,
+        wireStates: { y: l.slots.s_and.assignedGate === 'NULL' ? 'FLOATING' : 1 },
+      }));
+      const store = createStore(level, evaluate);
+      const initialResult = store.getState().result;
+      store.dispatch(place('s_and', 'AND'));
+      evaluate.mockClear();
+
+      store.dispatch(undo);
+      expect(store.getState().result).toBe(initialResult);
+      expect(evaluate).not.toHaveBeenCalled();
+    });
+
+    it('keeps Hard mode without a result', () => {
+      const store = createStore(hardLevel, mockEvaluate());
+      store.dispatch(place('s_and', 'AND'));
+      store.dispatch(undo);
+
+      expect(gateIn(store, 's_and')).toBe('NULL');
+      expect(store.getState().result).toBeNull();
+    });
+  });
+
+  describe('log', () => {
+    it('starts empty', () => {
+      expect(createStore(level, mockEvaluate()).getState().log).toEqual([]);
+    });
+
+    it('records each accepted action with the gates it involved', () => {
+      const store = createStore(level, mockEvaluate());
+      store.dispatch(place('s_and', 'AND'));
+      store.dispatch(place('s_and', 'OR'));
+      store.dispatch(remove('s_and'));
+
+      expect(store.getState().log).toEqual([
+        { type: 'PLACE_GATE', slotId: 's_and', gate: 'AND', replaced: 'NULL' },
+        { type: 'PLACE_GATE', slotId: 's_and', gate: 'OR', replaced: 'AND' },
+        { type: 'REMOVE_GATE', slotId: 's_and', gate: 'OR' },
+      ]);
+    });
+
+    it('skips rejected actions', () => {
+      const store = createStore(level, mockEvaluate());
+      store.dispatch(place('s_and', 'NOT'));
+      store.dispatch(remove('s_and'));
+      store.dispatch(undo);
+
+      expect(store.getState().log).toEqual([]);
+    });
+
+    it('adds an entry for an undo and keeps the action it took back', () => {
+      const store = createStore(level, mockEvaluate());
+      store.dispatch(place('s_and', 'AND'));
+      store.dispatch(undo);
+
+      expect(store.getState().log).toEqual([
+        { type: 'PLACE_GATE', slotId: 's_and', gate: 'AND', replaced: 'NULL' },
+        { type: 'UNDO' },
+      ]);
     });
   });
 

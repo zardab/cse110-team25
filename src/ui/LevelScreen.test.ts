@@ -28,6 +28,7 @@ describe('LevelScreen Logic', () => {
       <div id="progress-dots"></div>
       <div id="palette-grid"></div>
       <button id="reset-btn"></button>
+      <button id="undo-btn"></button>
     `;
     new LevelScreen();
   });
@@ -71,5 +72,31 @@ describe('LevelScreen Logic', () => {
   it('offers only gates that fit the two-pin slot', () => {
     const cards = [...document.querySelectorAll('.gate-card')].map((c) => c.getAttribute('data-gate'));
     expect(cards).toEqual(['OR', 'AND']);
+  });
+
+  it('undoes the latest move and is only enabled when there is one', () => {
+    const undoBtn = document.getElementById('undo-btn') as HTMLButtonElement;
+    expect(undoBtn.disabled).toBe(true);
+
+    options.onPlaceGate('slot_1', 'OR');
+    options.onPlaceGate('slot_1', 'AND');
+    expect(undoBtn.disabled).toBe(false);
+
+    undoBtn.click();
+    expect(lastRender()).toMatchObject({ gate: 'OR', wireStates: { out_Y: 1 } });
+    const counts = [...document.querySelectorAll('.gate-count')].map((count) => count.textContent);
+    expect(counts).toEqual(['×0', '×1']);
+
+    undoBtn.click();
+    expect(lastRender()).toMatchObject({ gate: 'NULL', wireStates: { out_Y: 'FLOATING' } });
+    expect(undoBtn.disabled).toBe(true);
+  });
+
+  it('starts a reset level with nothing to undo', () => {
+    const undoBtn = document.getElementById('undo-btn') as HTMLButtonElement;
+    options.onPlaceGate('slot_1', 'OR');
+
+    document.getElementById('reset-btn')!.click();
+    expect(undoBtn.disabled).toBe(true);
   });
 });
