@@ -120,6 +120,9 @@ export class LevelScreen {
     if (title) title.textContent = won ? 'Level Complete!' : "Time's Up!";
     if (message) message.textContent = won ? `You finished with ${this.timeRemaining}s remaining!` : 'You ran out of time.';
     if (overlay) overlay.hidden = false;
+    
+    const undoBtn = document.getElementById('undo-btn') as HTMLButtonElement | null;
+    if (undoBtn) undoBtn.disabled = true;
   }
 
   private hideGameOver() {
@@ -132,13 +135,25 @@ export class LevelScreen {
     this.boardView.render(state.level, state.result?.wireStates ?? {});
     this.renderTrayUI(state);
 
-    if (this.timed && !this.gameEnded && state.result?.isSolved) this.finishGame(true);
+    if (this.timed && !this.gameEnded && state.result?.isSolved) {
+      this.finishGame(true);
+    }
+
+    const undoBtn = document.getElementById('undo-btn') as HTMLButtonElement | null;
+    if (undoBtn) undoBtn.disabled = this.gameEnded || !state.canUndo;
   }
 
   private setupHeaderAndTray() {
     // Reset Button Events (reset level and restart timer for minigame)
     document.getElementById('reset-btn')?.addEventListener('click', () => { this.loadLevel(LEVEL_1_CONFIG); if (this.timed) this.startTimer(); });
     document.getElementById('restart-minigame-btn')?.addEventListener('click', () => { this.loadLevel(LEVEL_1_CONFIG); this.startTimer(); });
+
+    // Undo Button Event: the store takes back the latest board change, if there is one
+    document.getElementById('undo-btn')?.addEventListener('click', () => {
+      if (!this.gameEnded) {
+        this.store.dispatch({ type: 'UNDO' });
+      }
+    });
 
     // Render 12 progress dots
     const dotsContainer = document.getElementById('progress-dots');

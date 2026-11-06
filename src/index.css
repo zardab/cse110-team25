@@ -56,6 +56,15 @@ body {
   color: #18181B;
 }
 
+/* Changes the color of icons that cannot be used by user
+   Ex: Undo button when there are no more actions to undo */
+.icon-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+  background-color: transparent;
+  color: #71717A;
+}
+
 .top-nav-right {
   display: flex;
   gap: 12px;
