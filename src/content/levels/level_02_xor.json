@@ -1,0 +1,63 @@
+{
+  "id": "level_02_xor",
+  "title": "Spot the Difference",
+  "difficulty": "EASY",
+  "availableGatePalette": {
+    "AND": 1,
+    "OR": 1,
+    "NOT": 1,
+    "XOR": 1
+  },
+  "primaryInputs": ["in_A", "in_B", "in_C", "in_D"],
+  "primaryOutputs": ["out_Z", "out_Y"],
+  "inputValues": {
+    "in_A": 1,
+    "in_B": 0,
+    "in_C": 1,
+    "in_D": 1
+  },
+  "slots": {
+    "slot_or": {
+      "id": "slot_or",
+      "allowedGates": ["OR"],
+      "inputs": [
+        {"sourceType": "PRIMARY_INPUT", "sourceId": "in_A"},
+        {"sourceType": "PRIMARY_INPUT", "sourceId": "in_B"}
+      ],
+      "outputWireId": "wire_or",
+      "assignedGate": "OR"
+    },
+    "slot_not": {
+      "id": "slot_not",
+      "allowedGates": ["NOT"],
+      "inputs": [{"sourceType": "PRIMARY_INPUT", "sourceId": "in_C"}],
+      "outputWireId": "wire_not_c",
+      "assignedGate": "NOT"
+    },
+    "slot_xor": {
+      "id": "slot_xor",
+      "allowedGates": ["XOR"],
+      "inputs": [
+        {"sourceType": "SLOT_OUTPUT", "sourceId": "slot_or"},
+        {"sourceType": "SLOT_OUTPUT", "sourceId": "slot_not"}
+      ],
+      "outputWireId": "out_Z",
+      "assignedGate": "NULL"
+    },
+    "slot_and": {
+      "id": "slot_and",
+      "allowedGates": ["AND"],
+      "inputs": [
+        {"sourceType": "SLOT_OUTPUT", "sourceId": "slot_xor"},
+        {"sourceType": "PRIMARY_INPUT", "sourceId": "in_D"}
+      ],
+      "outputWireId": "out_Y",
+      "assignedGate": "NULL"
+    }
+  },
+  "hints": [
+    {"message": "XOR outputs 1 when its two inputs are different."},
+    {"triggerSlotId": "slot_xor", "message": "Compare the two branches before sending their result to AND."}
+  ],
+  "targetOutputs": {"out_Z": 1, "out_Y": 1}
+}
