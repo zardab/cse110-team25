@@ -1,0 +1,52 @@
+{
+  "id": "level_01_foundations",
+  "title": "Logic Gate Foundations",
+  "difficulty": "EASY",
+  "availableGatePalette": {
+    "AND": 1,
+    "OR": 1,
+    "NOT": 1
+  },
+  "primaryInputs": ["in_A", "in_B", "in_C"],
+  "primaryOutputs": ["out_Y"],
+  "inputValues": {
+    "in_A": 0,
+    "in_B": 1,
+    "in_C": 0
+  },
+  "slots": {
+    "slot_not": {
+      "id": "slot_not",
+      "allowedGates": ["NOT"],
+      "inputs": [{"sourceType": "PRIMARY_INPUT", "sourceId": "in_A"}],
+      "outputWireId": "wire_not_a",
+      "assignedGate": "NOT"
+    },
+    "slot_and": {
+      "id": "slot_and",
+      "allowedGates": ["AND"],
+      "inputs": [
+        {"sourceType": "SLOT_OUTPUT", "sourceId": "slot_not"},
+        {"sourceType": "PRIMARY_INPUT", "sourceId": "in_B"}
+      ],
+      "outputWireId": "wire_and",
+      "assignedGate": "NULL"
+    },
+    "slot_or": {
+      "id": "slot_or",
+      "allowedGates": ["OR"],
+      "inputs": [
+        {"sourceType": "SLOT_OUTPUT", "sourceId": "slot_and"},
+        {"sourceType": "PRIMARY_INPUT", "sourceId": "in_C"}
+      ],
+      "outputWireId": "out_Y",
+      "assignedGate": "NULL"
+    }
+  },
+  "hints": [
+    {"message": "Start by flipping the first input with NOT."},
+    {"triggerSlotId": "slot_and", "message": "AND passes 1 only when both of its inputs are 1."},
+    {"triggerSlotId": "slot_or", "message": "OR passes 1 when at least one input is 1."}
+  ],
+  "targetOutputs": {"out_Y": 1}
+}
