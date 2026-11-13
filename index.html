@@ -12,7 +12,7 @@
       </svg>
     </button>
 
-    <div id="progress-dots" class="progress-dots"></div>
+    <span id="level-status" role="status"></span>
 
     <div class="top-nav-right">
       <div id="timer-display" class="timer-display">15s</div>
@@ -40,8 +40,7 @@
 
   <main class="board-card">
     <div class="card-badges">
-      <div class="badge level-badge">Level 1 <span class="dim">/ 12</span></div>
-      <div class="badge attempt-badge">Attempt 1</div>
+      <div class="badge level-badge" id="level-title"></div>
     </div>
     <div id="konva-container" class="konva-container"></div>
       <div id="game-over-overlay" class="game-over-overlay" hidden>
@@ -58,7 +57,7 @@
   <footer class="gate-tray-section">
     <div class="tray-header">
       <span class="tray-title">AVAILABLE GATES</span>
-      <span class="tray-subtitle">CLICK ⓘ TO LEARN MORE</span>
+      <span class="tray-subtitle">Drag a gate to a slot, or select a gate and tap a slot</span>
     </div>
     <div id="palette-grid" class="palette-grid"></div>
   </footer>

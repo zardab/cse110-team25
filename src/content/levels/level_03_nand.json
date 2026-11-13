@@ -1,0 +1,74 @@
+{
+  "id": "level_03_nand",
+  "title": "The Inverted Combination",
+  "difficulty": "HARD",
+  "availableGatePalette": {
+    "AND": 2,
+    "OR": 1,
+    "NOT": 1,
+    "NAND": 1
+  },
+  "primaryInputs": ["in_A", "in_B", "in_C", "in_D", "in_E"],
+  "primaryOutputs": ["out_Z", "out_W", "out_Y"],
+  "inputValues": {
+    "in_A": 1,
+    "in_B": 1,
+    "in_C": 0,
+    "in_D": 1,
+    "in_E": 1
+  },
+  "slots": {
+    "slot_and_left": {
+      "id": "slot_and_left",
+      "allowedGates": ["AND"],
+      "inputs": [
+        {"sourceType": "PRIMARY_INPUT", "sourceId": "in_A"},
+        {"sourceType": "PRIMARY_INPUT", "sourceId": "in_B"}
+      ],
+      "outputWireId": "wire_and_left",
+      "assignedGate": "AND"
+    },
+    "slot_or_right": {
+      "id": "slot_or_right",
+      "allowedGates": ["OR"],
+      "inputs": [
+        {"sourceType": "PRIMARY_INPUT", "sourceId": "in_C"},
+        {"sourceType": "PRIMARY_INPUT", "sourceId": "in_D"}
+      ],
+      "outputWireId": "wire_or_right",
+      "assignedGate": "OR"
+    },
+    "slot_nand": {
+      "id": "slot_nand",
+      "allowedGates": ["NAND"],
+      "inputs": [
+        {"sourceType": "SLOT_OUTPUT", "sourceId": "slot_and_left"},
+        {"sourceType": "SLOT_OUTPUT", "sourceId": "slot_or_right"}
+      ],
+      "outputWireId": "out_Z",
+      "assignedGate": "NULL"
+    },
+    "slot_not": {
+      "id": "slot_not",
+      "allowedGates": ["NOT"],
+      "inputs": [{"sourceType": "PRIMARY_INPUT", "sourceId": "in_E"}],
+      "outputWireId": "out_W",
+      "assignedGate": "NULL"
+    },
+    "slot_output": {
+      "id": "slot_output",
+      "allowedGates": ["AND"],
+      "inputs": [
+        {"sourceType": "SLOT_OUTPUT", "sourceId": "slot_nand"},
+        {"sourceType": "SLOT_OUTPUT", "sourceId": "slot_not"}
+      ],
+      "outputWireId": "out_Y",
+      "assignedGate": "NULL"
+    }
+  },
+  "hints": [
+    {"message": "NAND is an AND gate with its result inverted."},
+    {"triggerSlotId": "slot_nand", "message": "Build both branches before combining them with NAND."}
+  ],
+  "targetOutputs": {"out_Z": 0, "out_W": 0, "out_Y": 0}
+}

@@ -1,11 +1,15 @@
 import { GameBoardView } from './components/GameBoardView';
 import { createStore, type GameState, type GameStore } from '../state/store';
 import type { GateType, LevelConfig } from '../types/circuit';
+import { LevelValidationError, loadLevel } from '../content/levelLoader';
+import type { StorageAdapter } from '../persistence/storageAdapter';
 
 const DEFAULT_MINIGAME_DURATION_SECONDS = 15;
 
 //Added this interface to allow for optional parameters in the LevelScreen constructor (i.e. minigame timer settings)
 interface LevelScreenOptions {
+  level?: LevelConfig;
+  storage?: StorageAdapter;
   timed?: boolean;
   durationSeconds?: number;
 }
@@ -39,6 +43,10 @@ export class LevelScreen {
   private store!: GameStore;
   private unsubscribe = () => {};
   private boardView: GameBoardView;
+  private readonly startingLevel: LevelConfig;
+  private readonly storage?: StorageAdapter;
+  private readonly controls = new AbortController();
+  private selectedGate: GateType | undefined;
 
   // Minigame timer settings
   private readonly timed: boolean;
@@ -50,6 +58,8 @@ export class LevelScreen {
   private gameEnded = false;
 
   constructor(options: LevelScreenOptions = {}) {
+    this.startingLevel = options.level ?? LEVEL_1_CONFIG;
+    this.storage = options.storage;
     this.timed = options.timed ?? false;
     this.durationSeconds =
       options.durationSeconds ?? DEFAULT_MINIGAME_DURATION_SECONDS;
@@ -64,23 +74,77 @@ export class LevelScreen {
     // so untrusted drag-and-drop data can be dispatched as is.
     this.boardView = new GameBoardView({
       container,
-      levelConfig: LEVEL_1_CONFIG,
-      onPlaceGate: (slotId, gate) => { if (!this.gameEnded) this.store.dispatch({ type: 'PLACE_GATE', slotId, gate }); },
-      onRemoveGate: (slotId) => { if (!this.gameEnded) this.store.dispatch({ type: 'REMOVE_GATE', slotId }); },
+      levelConfig: this.startingLevel,
+      onPlaceGate: (slotId, gate) => {
+        if (!this.gameEnded) this.store.dispatch({ type: 'PLACE_GATE', slotId, gate });
+      },
+      onRemoveGate: (slotId) => {
+        if (!this.gameEnded) this.store.dispatch({ type: 'REMOVE_GATE', slotId });
+      },
+      onSlotClick: (slotId) => {
+        if (!this.gameEnded && this.selectedGate) {
+          this.store.dispatch({ type: 'PLACE_GATE', slotId, gate: this.selectedGate });
+        }
+      },
     });
 
     this.setupHeaderAndTray();
-    this.loadLevel(LEVEL_1_CONFIG);
+    const title = document.getElementById('level-title');
+    if (title) title.textContent = this.startingLevel.title;
+    this.loadLevel(this.restoreLevel());
     if (this.timed) this.startTimer();
   }
 
   // The store has no reset action, so starting a level over means a fresh store.
   private loadLevel(level: LevelConfig) {
     this.unsubscribe();
+    this.selectedGate = undefined;
     this.store = createStore(level);
-    this.unsubscribe = this.store.subscribe((state) => this.render(state));
+    this.unsubscribe = this.store.subscribe((state) => {
+      this.saveProgress(state);
+      this.render(state);
+    });
     // Listeners only hear about later actions, so draw the starting state now.
     this.render(this.store.getState());
+  }
+
+  private restoreLevel(): LevelConfig {
+    const level = this.startingLevel;
+    const progress = this.storage?.loadLevel(level);
+    if (!progress || Object.keys(progress.placements).length === 0) return level;
+
+    const slots = Object.fromEntries(Object.entries(level.slots).map(([id, slot]) => [
+      id,
+      { ...slot, assignedGate: progress.placements[id] ?? slot.assignedGate },
+    ]));
+    try {
+      // A partial save and the authored gates must fit within inventory together.
+      return loadLevel({ ...level, slots });
+    } catch (error) {
+      if (error instanceof LevelValidationError) return level;
+      throw error;
+    }
+  }
+
+  private saveProgress(state: GameState): void {
+    if (!this.storage) return;
+    const placements = Object.fromEntries(Object.values(state.level.slots).map((slot) => [
+      slot.id,
+      slot.assignedGate,
+    ]));
+    this.storage.saveLevel(this.startingLevel, {
+      placements,
+      completed: state.result?.isSolved ?? false,
+      stars: 0,
+    });
+  }
+
+  destroy(): void {
+    this.stopTimer();
+    this.hideGameOver();
+    this.unsubscribe();
+    this.controls.abort();
+    this.boardView.destroy();
   }
 
   // Update the timer display in the UI
@@ -130,10 +194,18 @@ export class LevelScreen {
     if (overlay) overlay.hidden = true;
   }
 
-  // Hard mode has no result until a check action exists, so wires stay unlit.
   private render(state: GameState) {
+    if (this.selectedGate && state.inventory[this.selectedGate] <= 0) {
+      this.selectedGate = undefined;
+    }
+    this.boardView.setPlacingGate(this.selectedGate !== undefined);
     this.boardView.render(state.level, state.result?.wireStates ?? {});
     this.renderTrayUI(state);
+
+    const status = document.getElementById('level-status');
+    if (status) {
+      status.textContent = state.result?.isSolved ? 'Level complete!' : '';
+    }
 
     if (this.timed && !this.gameEnded && state.result?.isSolved) {
       this.finishGame(true);
@@ -144,24 +216,21 @@ export class LevelScreen {
   }
 
   private setupHeaderAndTray() {
-    // Reset Button Events (reset level and restart timer for minigame)
-    document.getElementById('reset-btn')?.addEventListener('click', () => { this.loadLevel(LEVEL_1_CONFIG); if (this.timed) this.startTimer(); });
-    document.getElementById('restart-minigame-btn')?.addEventListener('click', () => { this.loadLevel(LEVEL_1_CONFIG); this.startTimer(); });
+    const options = { signal: this.controls.signal };
+    const reset = () => {
+      this.loadLevel(this.startingLevel);
+      this.saveProgress(this.store.getState());
+      if (this.timed) this.startTimer();
+    };
+    document.getElementById('reset-btn')?.addEventListener('click', reset, options);
+    document.getElementById('restart-minigame-btn')?.addEventListener('click', reset, options);
 
     // Undo Button Event: the store takes back the latest board change, if there is one
     document.getElementById('undo-btn')?.addEventListener('click', () => {
       if (!this.gameEnded) {
         this.store.dispatch({ type: 'UNDO' });
       }
-    });
-
-    // Render 12 progress dots
-    const dotsContainer = document.getElementById('progress-dots');
-    if (dotsContainer) {
-      dotsContainer.innerHTML = Array.from({ length: 12 }, (_, i) => 
-        `<div class="dot ${i === 0 ? 'current active' : ''}"></div>`
-      ).join('');
-    }
+    }, options);
   }
 
   private renderTrayUI(state: GameState) {
@@ -171,10 +240,12 @@ export class LevelScreen {
     // The palette never changes, so it fixes which cards show; the inventory says how many are left.
     const trayGates = (Object.keys(state.level.availableGatePalette) as GateType[])
       .filter((gate) => state.level.availableGatePalette[gate] > 0);
+    const slots = Object.values(state.level.slots);
 
     grid.innerHTML = trayGates
       .map((gate) => {
-        const isSelected = state.level.slots['slot_1'].assignedGate === gate;
+        const isSelected = this.selectedGate === gate
+          || (slots.length === 1 && slots[0].assignedGate === gate);
         const remaining = state.inventory[gate];
         const isEmpty = remaining <= 0;
         return `
@@ -201,7 +272,16 @@ export class LevelScreen {
     grid.querySelectorAll('.gate-card[aria-disabled="false"]').forEach((card) => {
       const gate = card.getAttribute('data-gate') as GateType;
 
-      card.addEventListener('click', () => { if (!this.gameEnded) this.store.dispatch({ type: 'PLACE_GATE', slotId: 'slot_1', gate }); });
+      card.addEventListener('click', () => {
+        if (this.gameEnded) return;
+        if (slots.length === 1) {
+          this.store.dispatch({ type: 'PLACE_GATE', slotId: slots[0].id, gate });
+        } else {
+          this.selectedGate = this.selectedGate === gate ? undefined : gate;
+          this.boardView.setPlacingGate(this.selectedGate !== undefined);
+          this.renderTrayUI(state);
+        }
+      });
       card.addEventListener('dragstart', (e) => {
         (e as DragEvent).dataTransfer?.setData('gateType', gate);
       });

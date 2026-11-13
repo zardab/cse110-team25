@@ -9,6 +9,8 @@ import type {
 import { MainMenuController } from "./MainMenuController.ts";
 import { Cutscene1Controller } from "../Cutscenes/Cutscene1/Cutscene1Controller.ts";
 import { LevelSelectorController } from "./LevelSelectorController.ts";
+import { mainLevels } from "../content/levelCatalog";
+import type { LevelConfig } from "../types/circuit";
 
 type KonvaScreenId = Exclude<ScreenId["type"], "level1">;
 
@@ -17,7 +19,7 @@ export class SceneController implements ScreenSwitcher {
   private layer = new Konva.Layer();
   private screens: Record<KonvaScreenId, ScreenController>;
 
-  constructor(private onLevel1: () => void) {
+  constructor(private onLevel: (level: LevelConfig) => void) {
     const width = window.innerWidth;
     const height = window.innerHeight;
 
@@ -41,7 +43,8 @@ export class SceneController implements ScreenSwitcher {
       levelSelector: new LevelSelectorController(
         width,
         height,
-        () => this.openLevel1(),
+        mainLevels,
+        (id) => this.openLevel(id),
       ),
     };
 
@@ -54,7 +57,7 @@ export class SceneController implements ScreenSwitcher {
 
   switchToScreen(screen: ScreenId): void {
     if (screen.type === "level1") {
-      this.openLevel1();
+      this.openLevel(mainLevels[0].id);
       return;
     }
 
@@ -70,13 +73,15 @@ export class SceneController implements ScreenSwitcher {
     this.screens[screen.type].start?.();
   }
 
-  private openLevel1(): void {
+  private openLevel(id: string): void {
+    const level = mainLevels.find((candidate) => candidate.id === id);
+    if (!level) return;
     for (const controller of Object.values(this.screens)) {
       controller.stop?.();
       controller.getView().hide();
     }
 
-    this.onLevel1();
+    this.onLevel(level);
   }
 
   destroy(): void {

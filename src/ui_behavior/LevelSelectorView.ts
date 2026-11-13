@@ -1,6 +1,7 @@
 import Konva from "konva";
 import type { View } from "../screenTypes.ts";
 import menuImageUrl from "../assets/levelSelectorMenu.png";
+import type { LevelConfig } from "../types/circuit";
 
 // Set IMAGE to your picture's real width and height so it isn't stretched.
 const IMAGE = { width: 800, height: 550 };
@@ -12,14 +13,8 @@ type LevelButton = {
 	y: number; // center of the button, as a fraction of the screen's height
 };
 
-// Every level button. To add a level, add one line here.
-const LEVELS: LevelButton[] = [
-	{ id: "level1", label: "LEVEL 1", x: 0.5, y: 0.68 },
-	// { id: "level2", label: "LEVEL 2", x: 0.35, y: 0.5 },
-];
-
 // All buttons share this look (sizes are in screen pixels)
-const BUTTON_STYLE = { width: 235, height: 63, fontSize: 31 };
+const BUTTON_STYLE = { width: 235, height: 42, fontSize: 20 };
 
 /**
  * LevelSelectorView - Renders the level selector: a black screen with a
@@ -31,6 +26,7 @@ export class LevelSelectorView implements View {
 	constructor(
 		width: number,
 		height: number,
+		levels: readonly LevelConfig[],
 		onLevelClick: (levelId: string) => void,
 	) {
 		//black cutscene box
@@ -61,13 +57,14 @@ export class LevelSelectorView implements View {
 			this.group.getLayer()?.draw();
 		});
 
-		// One button per entry in LEVELS
-		for (const level of LEVELS) {
+		for (const [index, entry] of levels.entries()) {
+			const level = { id: entry.id, label: `Level ${index + 1}`, x: 0.5,
+				y: 0.58 + (index - (levels.length - 1) / 2) * Math.min(54 / height, 0.11) };
 			this.group.add(this.createButton(level, width, height, onLevelClick));
 		}
 	}
 
-	/** Builds one button, centered on the position given in its LEVELS entry. */
+	/** Builds one button, centered on the position given in its entry. */
 	private createButton(
 		level: LevelButton,
 		width: number,
@@ -101,7 +98,7 @@ export class LevelSelectorView implements View {
 				verticalAlign: "middle",
 			}),
 		);
-		button.on("click", () => onLevelClick(level.id));
+		button.on("click tap", () => onLevelClick(level.id));
 		return button;
 	}
 
