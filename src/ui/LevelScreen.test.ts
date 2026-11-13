@@ -37,7 +37,6 @@ describe('Main game level integration', () => {
       <h1 id="level-title"></h1>
       <span id="level-status"></span>
       <button id="reset-btn"></button>
-      <button id="check-answer-btn"></button>
     `;
   });
 
@@ -72,16 +71,17 @@ describe('Main game level integration', () => {
     });
   });
 
-  it('records Hard mode completion when the player checks the answer', () => {
+  it('restores Hard mode placements with wire feedback hidden', () => {
     screen = new LevelScreen({ level: nand, storage });
     options.onPlaceGate('slot_nand', 'NAND');
-    options.onPlaceGate('slot_not', 'NOT');
-    options.onPlaceGate('slot_output', 'AND');
     expect(storage.getProgress()[nand.id].completed).toBe(false);
+    screen.destroy();
 
-    document.getElementById('check-answer-btn')!.click();
-    expect(storage.getProgress()[nand.id].completed).toBe(true);
-    expect(document.getElementById('level-status')!.textContent).toBe('Level complete!');
+    screen = new LevelScreen({ level: nand, storage: new StorageAdapter() });
+    const [level, wireStates] = render.mock.lastCall!;
+    expect(level.slots.slot_nand.assignedGate).toBe('NAND');
+    expect(wireStates).toEqual({});
+    expect(document.getElementById('level-status')!.textContent).toBe('');
   });
 });
 
