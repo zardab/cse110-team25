@@ -9,7 +9,6 @@ import type {
 export type GameAction =
   | { readonly type: 'PLACE_GATE'; readonly slotId: string; readonly gate: GateType }
   | { readonly type: 'REMOVE_GATE'; readonly slotId: string }
-  | { readonly type: 'CHECK_ANSWER' }
   | { readonly type: 'UNDO' };
 
 /** One accepted action, with the gates involved so the entry reads on its own. */
@@ -31,7 +30,7 @@ export interface GameState {
   readonly level: LevelConfig;
   /** Gates still available to place. */
   readonly inventory: Inventory;
-  /** Latest evaluation, or null when Hard mode is waiting for a check. */
+  /** Latest evaluation, or null when none is current (Hard mode, until a check action exists). */
   readonly result: SimulationResult | null;
   /** Every accepted action in order. An undo is logged too; it never erases earlier entries. */
   readonly log: readonly LogEntry[];
@@ -170,9 +169,6 @@ export function createStore(
           return removeGate(action.slotId);
         case 'UNDO':
           return undo();
-        case 'CHECK_ANSWER':
-          result = evaluate(level);
-          return publish();
         default:
           return false;
       }

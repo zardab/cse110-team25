@@ -91,8 +91,6 @@ export class LevelScreen {
     this.setupHeaderAndTray();
     const title = document.getElementById('level-title');
     if (title) title.textContent = this.startingLevel.title;
-    const check = document.getElementById('check-answer-btn');
-    if (check) check.hidden = this.startingLevel.difficulty !== 'HARD';
     this.loadLevel(this.restoreLevel());
     if (this.timed) this.startTimer();
   }
@@ -206,10 +204,7 @@ export class LevelScreen {
 
     const status = document.getElementById('level-status');
     if (status) {
-      status.textContent = state.result?.isSolved ? 'Level complete!'
-        : this.startingLevel.difficulty === 'HARD' && state.result
-          ? state.result.isComplete ? 'Check your gate placements.' : 'Fill every slot first.'
-          : '';
+      status.textContent = state.result?.isSolved ? 'Level complete!' : '';
     }
 
     if (this.timed && !this.gameEnded && state.result?.isSolved) {
@@ -229,9 +224,6 @@ export class LevelScreen {
     };
     document.getElementById('reset-btn')?.addEventListener('click', reset, options);
     document.getElementById('restart-minigame-btn')?.addEventListener('click', reset, options);
-    document.getElementById('check-answer-btn')?.addEventListener('click', () => {
-      if (!this.gameEnded) this.store.dispatch({ type: 'CHECK_ANSWER' });
-    }, options);
 
     // Undo Button Event: the store takes back the latest board change, if there is one
     document.getElementById('undo-btn')?.addEventListener('click', () => {
