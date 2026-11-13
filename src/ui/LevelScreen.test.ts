@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
 import { LevelScreen } from './LevelScreen';
 import { mainLevels } from '../content/levelCatalog';
+import { loadLevel } from '../content/levelLoader';
 import { StorageAdapter } from '../persistence/storageAdapter';
 
 // jsdom has no canvas, so replace the Konva board with a recorder.
@@ -37,6 +38,7 @@ describe('Main game level integration', () => {
       <h1 id="level-title"></h1>
       <span id="level-status"></span>
       <button id="reset-btn"></button>
+      <button id="undo-btn"></button>
     `;
   });
 
@@ -58,6 +60,8 @@ describe('Main game level integration', () => {
   });
 
   it('saves completion and resets only the selected level board', () => {
+    const otherLevel = { completed: true, stars: 2, placements: { slot_xor: 'XOR' } } as const;
+    expect(storage.saveLevel(xor, otherLevel)).toBe(true);
     screen = new LevelScreen({ level: foundations, storage });
     options.onPlaceGate('slot_and', 'AND');
     options.onPlaceGate('slot_or', 'OR');
@@ -69,6 +73,60 @@ describe('Main game level integration', () => {
       completed: true,
       placements: { slot_not: 'NOT', slot_and: 'NULL', slot_or: 'NULL' },
     });
+    expect(storage.loadLevel(xor)).toEqual(otherLevel);
+  });
+
+  it('persists the board after undo and restores its gate inventory', () => {
+    screen = new LevelScreen({ level: foundations, storage });
+    options.onPlaceGate('slot_and', 'AND');
+    options.onPlaceGate('slot_or', 'OR');
+    document.getElementById('undo-btn')!.click();
+    screen.destroy();
+
+    screen = new LevelScreen({ level: foundations, storage });
+    expect(render.mock.lastCall![0].slots).toMatchObject({
+      slot_and: { assignedGate: 'AND' },
+      slot_or: { assignedGate: 'NULL' },
+    });
+    expect(document.querySelector('[data-gate="OR"] .gate-count')?.textContent).toBe('×1');
+    expect(storage.loadLevel(foundations).completed).toBe(true);
+  });
+
+  it('opens the authored board when a partial save would exceed the current inventory', () => {
+    const level = loadLevel({
+      ...foundations,
+      slots: {
+        ...foundations.slots,
+        slot_not: { ...foundations.slots.slot_not, assignedGate: 'NULL' },
+        slot_and: { ...foundations.slots.slot_and, assignedGate: 'AND' },
+        slot_or: { ...foundations.slots.slot_or, allowedGates: ['AND', 'OR'] },
+      },
+    });
+    const saved = { completed: true, stars: 2, placements: { slot_or: 'AND' } } as const;
+    expect(storage.saveLevel(level, saved)).toBe(true);
+
+    screen = new LevelScreen({ level, storage });
+    expect(render.mock.lastCall![0].slots).toEqual(level.slots);
+    options.onPlaceGate('slot_or', 'OR');
+    expect(storage.loadLevel(level)).toMatchObject({
+      completed: true,
+      stars: 2,
+      placements: { slot_and: 'AND', slot_or: 'OR' },
+    });
+  });
+
+  it('still evaluates accepted moves when browser storage rejects writes', () => {
+    storage = new StorageAdapter({
+      getItem: () => null,
+      setItem: () => { throw new Error('Quota exceeded'); },
+      removeItem: () => {},
+    });
+    screen = new LevelScreen({ level: foundations, storage });
+
+    options.onPlaceGate('slot_and', 'AND');
+    options.onPlaceGate('slot_or', 'OR');
+    expect(render.mock.lastCall![1].out_Y).toBe(1);
+    expect(document.getElementById('level-status')?.textContent).toBe('Level complete!');
   });
 
   it('restores Hard mode placements with wire feedback hidden', () => {
