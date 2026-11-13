@@ -1,27 +1,26 @@
 import './index.css';
 import { SceneController } from './ui_behavior/SceneController';
-import { LevelScreen } from './ui/LevelScreen'; // adjust path to your LevelScreen location
+import { LevelScreen } from './ui/LevelScreen';
+import { StorageAdapter } from './persistence/storageAdapter';
 
 window.addEventListener('DOMContentLoaded', () => {
-  const introContainer = document.getElementById('container');
-  const appContainer = document.getElementById('app');
+  const introContainer = document.getElementById('container')!;
+  const appContainer = document.getElementById('app')!;
+  const storage = new StorageAdapter();
+  let activeLevel: LevelScreen | undefined;
 
-  // 1. Boot up the SceneController with the transition callback
-  const scene = new SceneController(() => {
-    // 2. Transition fired: destroy the intro scene
-    scene.destroy();
+  const scene = new SceneController((level) => {
+    activeLevel?.destroy();
+    introContainer.style.display = 'none';
+    appContainer.style.display = 'flex';
+    activeLevel = new LevelScreen({ level, storage });
+  });
 
-    // 3. Hide the intro DOM element
-    if (introContainer) {
-      introContainer.style.display = 'none';
-    }
-
-    // 4. Reveal the game UI
-    if (appContainer) {
-      appContainer.style.display = 'flex';
-    }
-
-    // 5. Instantiate the Konva level screen
-    new LevelScreen();
+  document.getElementById('menu-btn')?.addEventListener('click', () => {
+    activeLevel?.destroy();
+    activeLevel = undefined;
+    appContainer.style.display = 'none';
+    introContainer.style.display = '';
+    scene.switchToScreen({ type: 'levelSelector' });
   });
 });
