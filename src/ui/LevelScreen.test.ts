@@ -1,6 +1,8 @@
 // src/ui/LevelScreen.test.ts
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
 import { LevelScreen } from './LevelScreen';
+import { mainLevels } from '../content/levelCatalog';
+import { StorageAdapter } from '../persistence/storageAdapter';
 
 // jsdom has no canvas, so replace the Konva board with a recorder.
 const render = vi.fn();
@@ -11,6 +13,8 @@ vi.mock('./components/GameBoardView', () => ({
       options = opts;
     }
     render = render;
+    setPlacingGate() {}
+    destroy() {}
   },
 }));
 
@@ -18,6 +22,68 @@ function lastRender() {
   const [level, wireStates] = render.mock.calls.at(-1)!;
   return { gate: level.slots.slot_1.assignedGate, wireStates };
 }
+
+describe('Main game level integration', () => {
+  const [foundations, xor, nand] = mainLevels;
+  let screen: LevelScreen;
+  let storage: StorageAdapter;
+
+  beforeEach(() => {
+    localStorage.clear();
+    storage = new StorageAdapter();
+    document.body.innerHTML = `
+      <div id="konva-container"></div>
+      <div id="palette-grid"></div>
+      <h1 id="level-title"></h1>
+      <span id="level-status"></span>
+      <button id="reset-btn"></button>
+      <button id="check-answer-btn"></button>
+    `;
+  });
+
+  afterEach(() => screen.destroy());
+
+  it('restores a board by level ID after leaving the level and reopening it', () => {
+    screen = new LevelScreen({ level: foundations, storage });
+    options.onPlaceGate('slot_and', 'AND');
+    screen.destroy();
+
+    screen = new LevelScreen({ level: xor, storage });
+    expect(document.getElementById('level-title')!.textContent).toBe(xor.title);
+    expect(render.mock.lastCall![0].slots.slot_xor.assignedGate).toBe('NULL');
+    screen.destroy();
+
+    screen = new LevelScreen({ level: foundations, storage: new StorageAdapter() });
+    expect(render.mock.lastCall![0].slots.slot_and.assignedGate).toBe('AND');
+    expect(document.querySelector('[data-gate="AND"] .gate-count')?.textContent).toBe('×0');
+  });
+
+  it('saves completion and resets only the selected level board', () => {
+    screen = new LevelScreen({ level: foundations, storage });
+    options.onPlaceGate('slot_and', 'AND');
+    options.onPlaceGate('slot_or', 'OR');
+    expect(storage.getProgress()[foundations.id].completed).toBe(true);
+
+    document.getElementById('reset-btn')!.click();
+    expect(render.mock.lastCall![0].id).toBe(foundations.id);
+    expect(storage.loadLevel(foundations)).toMatchObject({
+      completed: true,
+      placements: { slot_not: 'NOT', slot_and: 'NULL', slot_or: 'NULL' },
+    });
+  });
+
+  it('records Hard mode completion when the player checks the answer', () => {
+    screen = new LevelScreen({ level: nand, storage });
+    options.onPlaceGate('slot_nand', 'NAND');
+    options.onPlaceGate('slot_not', 'NOT');
+    options.onPlaceGate('slot_output', 'AND');
+    expect(storage.getProgress()[nand.id].completed).toBe(false);
+
+    document.getElementById('check-answer-btn')!.click();
+    expect(storage.getProgress()[nand.id].completed).toBe(true);
+    expect(document.getElementById('level-status')!.textContent).toBe('Level complete!');
+  });
+});
 
 describe('LevelScreen Logic', () => {
   beforeEach(() => {
