@@ -1,4 +1,5 @@
 import { GameBoardView } from './components/GameBoardView';
+import { SideMenu } from './components/SideMenu';
 import { createStore, type GameState, type GameStore } from '../state/store';
 import type { GateType, LevelConfig } from '../types/circuit';
 
@@ -39,6 +40,7 @@ export class LevelScreen {
   private store!: GameStore;
   private unsubscribe = () => {};
   private boardView: GameBoardView;
+  private sideMenu!: SideMenu;
 
   // Minigame timer settings
   private readonly timed: boolean;
@@ -144,6 +146,9 @@ export class LevelScreen {
   }
 
   private setupHeaderAndTray() {
+    this.sideMenu = new SideMenu();
+    document.getElementById('menu-btn')?.addEventListener('click', () => this.sideMenu.open());
+
     // Reset Button Events (reset level and restart timer for minigame)
     document.getElementById('reset-btn')?.addEventListener('click', () => { this.loadLevel(LEVEL_1_CONFIG); if (this.timed) this.startTimer(); });
     document.getElementById('restart-minigame-btn')?.addEventListener('click', () => { this.loadLevel(LEVEL_1_CONFIG); this.startTimer(); });

@@ -28,12 +28,19 @@ describe('LevelScreen Logic', () => {
       <div id="progress-dots"></div>
       <div id="palette-grid"></div>
       <button id="reset-btn"></button>
+      <button id="menu-btn"></button>
       <div id="timer-display">15s</div>
 
       <div id="game-over-overlay" hidden>
         <h1 id="game-over-title"></h1>
         <p id="game-over-message"></p>
         <button id="restart-minigame-btn"></button>
+      </div>
+
+      <div id="game-sidebar" hidden>
+        <div id="sidebar-backdrop"></div>
+        <button id="sidebar-close-btn"></button>
+        <button id="difficulty-toggle" data-mode="HARD"></button>
       </div>
       
       <button id="undo-btn"></button>
@@ -124,12 +131,19 @@ describe('Timed minigame', () => {
       <div id="progress-dots"></div>
       <div id="palette-grid"></div>
       <button id="reset-btn"></button>
+      <button id="menu-btn"></button>
       <div id="timer-display">15s</div>
 
       <div id="game-over-overlay" hidden>
         <h1 id="game-over-title"></h1>
         <p id="game-over-message"></p>
         <button id="restart-minigame-btn"></button>
+      </div>
+
+      <div id="game-sidebar" hidden>
+        <div id="sidebar-backdrop"></div>
+        <button id="sidebar-close-btn"></button>
+        <button id="difficulty-toggle" data-mode="HARD"></button>
       </div>
       
       <button id="undo-btn"></button>
