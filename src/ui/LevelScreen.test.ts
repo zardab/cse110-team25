@@ -14,7 +14,6 @@ vi.mock('./components/GameBoardView', () => ({
       options = opts;
     }
     render = render;
-    setPlacingGate() {}
     destroy() {}
   },
 }));
@@ -36,7 +35,6 @@ describe('Main game level integration', () => {
       <div id="konva-container"></div>
       <div id="palette-grid"></div>
       <h1 id="level-title"></h1>
-      <span id="level-status"></span>
       <button id="reset-btn"></button>
       <button id="undo-btn"></button>
       <button id="menu-btn"></button>
@@ -150,7 +148,6 @@ describe('Main game level integration', () => {
     options.onPlaceGate('slot_and', 'AND');
     options.onPlaceGate('slot_or', 'OR');
     expect(render.mock.lastCall![1].out_Y).toBe(1);
-    expect(document.getElementById('level-status')?.textContent).toBe('Level complete!');
   });
 
   it('restores Hard mode placements with wire feedback hidden', () => {
@@ -163,7 +160,6 @@ describe('Main game level integration', () => {
     const [level, wireStates] = render.mock.lastCall!;
     expect(level.slots.slot_nand.assignedGate).toBe('NAND');
     expect(wireStates).toEqual({});
-    expect(document.getElementById('level-status')!.textContent).toBe('');
   });
 });
 

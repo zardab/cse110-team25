@@ -6,7 +6,6 @@ interface GameBoardViewOptions {
   levelConfig: LevelConfig;
   onPlaceGate?: (slotId: string, gate: GateType) => void;
   onRemoveGate?: (slotId: string) => void;
-  onSlotClick?: (slotId: string) => void;
 }
 
 interface Point { x: number; y: number }
@@ -21,7 +20,6 @@ export class GameBoardView {
   private readonly layer = new Konva.Layer();
   private readonly controls = new AbortController();
   private slotPositions = new Map<string, Point>();
-  private placingGate = false;
 
   constructor(private readonly options: GameBoardViewOptions) {
     this.stage = new Konva.Stage({ container: options.container, width: 850, height: 420 });
@@ -30,10 +28,6 @@ export class GameBoardView {
       { signal: this.controls.signal });
     options.container.addEventListener('drop', (event) => this.dropGate(event),
       { signal: this.controls.signal });
-  }
-
-  setPlacingGate(placing: boolean): void {
-    this.placingGate = placing;
   }
 
   render(level: LevelConfig, wireStates: Record<string, SignalState> = {}): void {
@@ -86,19 +80,26 @@ export class GameBoardView {
       outputSources.set(slot.outputWireId, { x: position.x + SLOT_WIDTH, y: position.y + SLOT_HEIGHT / 2 });
     }
     level.primaryOutputs.forEach((id, index) => {
-      const end = { x: width - 110, y: rowY(index, level.primaryOutputs.length) };
+      const end = { x: width - 134, y: rowY(index, level.primaryOutputs.length) };
       const signal = wireStates[id];
       this.drawWire(outputSources.get(id)!, end, signal);
-      const fill = signal === 1 ? '#CA8A04' : '#4B5563';
-      this.layer.add(new Konva.Circle({ ...end, radius: 8, fill }));
+      const x = end.x + 24;
+      const y = end.y;
+      const isHigh = signal === 1;
+      if (isHigh) this.layer.add(new Konva.Circle({ x, y, radius: 28, fill: '#FEF08A', opacity: 0.6 }));
+      this.layer.add(new Konva.Circle({ x, y, radius: 22, fill: isHigh ? '#FACC15' : '#E5E7EB' }));
+      this.layer.add(new Konva.Text({ x, y, text: '💡', fontSize: 24, offsetX: 12, offsetY: 12 }));
       this.layer.add(new Konva.Text({
-        x: end.x + 16, y: end.y - 13, fill, fontSize: 13,
+        x: x + 30, y: y - 13, fill: '#4B5563', fontSize: 13,
         text: `${id}: ${signal ?? '—'}\nTarget: ${level.targetOutputs[id]}`,
       }));
     });
     for (const [id, point] of inputs) {
       const value = level.inputValues[id];
-      this.layer.add(new Konva.Circle({ ...point, radius: 7, fill: value ? '#CA8A04' : '#4B5563' }));
+      this.layer.add(new Konva.Text({
+        x: point.x - 15, y: point.y, text: '⚡', fontSize: 26,
+        fill: value ? '#EAB308' : '#9CA3AF', offsetX: 13, offsetY: 13,
+      }));
       this.layer.add(new Konva.Text({
         x: 12, y: point.y - 7, fontSize: 14, fill: '#374151', text: `${id}: ${value}`,
       }));
@@ -109,17 +110,16 @@ export class GameBoardView {
       const group = new Konva.Group(position);
       group.add(new Konva.Rect({
         width: SLOT_WIDTH, height: SLOT_HEIGHT, cornerRadius: 14, strokeWidth: 2,
-        fill: empty ? '#FAFAFA' : '#EFF6FF', stroke: empty ? '#9CA3AF' : '#3B82F6',
+        fill: empty ? '#FAFAFA' : '#F9FAFB', stroke: empty ? '#9CA3AF' : '#3B82F6',
         dash: empty ? [6, 6] : [],
       }));
       group.add(new Konva.Text({
         width: SLOT_WIDTH, height: SLOT_HEIGHT, align: 'center', verticalAlign: 'middle',
         text: empty ? 'DROP GATE' : gate, fontSize: 15, fontStyle: 'bold',
-        fill: empty ? '#6B7280' : '#1D4ED8',
+        fill: empty ? '#9CA3AF' : '#1D4ED8',
       }));
       group.on('click tap', () => {
-        if (this.placingGate) this.options.onSlotClick?.(id);
-        else if (!empty) this.options.onRemoveGate?.(id);
+        if (!empty) this.options.onRemoveGate?.(id);
       });
       this.layer.add(group);
     }
@@ -130,8 +130,8 @@ export class GameBoardView {
     const middle = (start.x + end.x) / 2;
     this.layer.add(new Konva.Line({
       points: [start.x, start.y, middle, start.y, middle, end.y, end.x, end.y],
-      stroke: signal === 1 ? '#CA8A04' : signal === 0 ? '#6B7280' : '#D1D5DB',
-      strokeWidth: signal === 1 ? 4 : 2,
+      stroke: signal === 1 ? '#EAB308' : '#D1D5DB',
+      strokeWidth: signal === 1 ? 4 : 3,
       lineJoin: 'round',
       lineCap: 'round',
     }));

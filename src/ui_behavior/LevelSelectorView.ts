@@ -98,7 +98,7 @@ export class LevelSelectorView implements View {
 				verticalAlign: "middle",
 			}),
 		);
-		button.on("click tap", () => onLevelClick(level.id));
+		button.on("click", () => onLevelClick(level.id));
 		return button;
 	}
 
