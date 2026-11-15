@@ -1,0 +1,86 @@
+{
+  "id": "level_04_nor",
+  "title": "A Quiet Signal",
+  "difficulty": "HARD",
+  "availableGatePalette": {
+    "AND": 1,
+    "OR": 2,
+    "NOT": 1,
+    "XOR": 1,
+    "NOR": 1
+  },
+  "primaryInputs": ["in_A", "in_B", "in_C", "in_D", "in_E", "in_F"],
+  "primaryOutputs": ["out_V", "out_Z", "out_W", "out_Y"],
+  "inputValues": {
+    "in_A": 0,
+    "in_B": 0,
+    "in_C": 1,
+    "in_D": 1,
+    "in_E": 0,
+    "in_F": 1
+  },
+  "slots": {
+    "slot_or": {
+      "id": "slot_or",
+      "allowedGates": ["OR"],
+      "inputs": [
+        {"sourceType": "PRIMARY_INPUT", "sourceId": "in_A"},
+        {"sourceType": "PRIMARY_INPUT", "sourceId": "in_B"}
+      ],
+      "outputWireId": "out_V",
+      "assignedGate": "OR"
+    },
+    "slot_not": {
+      "id": "slot_not",
+      "allowedGates": ["NOT"],
+      "inputs": [{"sourceType": "PRIMARY_INPUT", "sourceId": "in_C"}],
+      "outputWireId": "wire_not_c",
+      "assignedGate": "NOT"
+    },
+    "slot_xor": {
+      "id": "slot_xor",
+      "allowedGates": ["XOR"],
+      "inputs": [
+        {"sourceType": "PRIMARY_INPUT", "sourceId": "in_D"},
+        {"sourceType": "PRIMARY_INPUT", "sourceId": "in_E"}
+      ],
+      "outputWireId": "wire_xor",
+      "assignedGate": "XOR"
+    },
+    "slot_nor": {
+      "id": "slot_nor",
+      "allowedGates": ["NOR"],
+      "inputs": [
+        {"sourceType": "SLOT_OUTPUT", "sourceId": "slot_or"},
+        {"sourceType": "SLOT_OUTPUT", "sourceId": "slot_not"}
+      ],
+      "outputWireId": "out_Z",
+      "assignedGate": "NULL"
+    },
+    "slot_and": {
+      "id": "slot_and",
+      "allowedGates": ["AND"],
+      "inputs": [
+        {"sourceType": "SLOT_OUTPUT", "sourceId": "slot_xor"},
+        {"sourceType": "PRIMARY_INPUT", "sourceId": "in_F"}
+      ],
+      "outputWireId": "out_W",
+      "assignedGate": "NULL"
+    },
+    "slot_output": {
+      "id": "slot_output",
+      "allowedGates": ["OR"],
+      "inputs": [
+        {"sourceType": "SLOT_OUTPUT", "sourceId": "slot_nor"},
+        {"sourceType": "SLOT_OUTPUT", "sourceId": "slot_and"}
+      ],
+      "outputWireId": "out_Y",
+      "assignedGate": "NULL"
+    }
+  },
+  "hints": [
+    {"message": "NOR outputs 1 only when both of its inputs are 0."},
+    {"triggerSlotId": "slot_nor", "message": "The NOT branch keeps the NOR inputs both low for this row."}
+  ],
+  "targetOutputs": {"out_V": 0, "out_Z": 1, "out_W": 1, "out_Y": 1}
+}

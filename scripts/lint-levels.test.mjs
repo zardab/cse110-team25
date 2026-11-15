@@ -23,7 +23,7 @@ describe('level linter CLI', () => {
     const result = run()
     expect(result.status).toBe(0)
     expect(result.stdout).toContain('level_01_and')
-    expect(result.stdout).toContain('1 level file(s); 0 failure(s)')
+    expect(result.stdout).toContain('6 level file(s); 0 failure(s)')
   })
 
   it('recursively checks files and reports all invalid files with nonzero exit status', () => {
