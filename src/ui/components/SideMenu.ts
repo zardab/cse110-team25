@@ -3,7 +3,7 @@ export class SideMenu {
   private readonly root: HTMLElement;
   private readonly toggle: HTMLElement;
 
-  constructor() {
+  constructor(signal: AbortSignal) {
     const root = document.getElementById('game-sidebar');
     if (!root) {
       throw new Error('SideMenu: #game-sidebar not found');
@@ -17,9 +17,10 @@ export class SideMenu {
     this.root = root;
     this.toggle = toggle;
 
-    document.getElementById('sidebar-close-btn')?.addEventListener('click', () => this.close());
-    document.getElementById('sidebar-backdrop')?.addEventListener('click', () => this.close());
-    this.toggle.addEventListener('click', () => this.flipDifficulty());
+    const options = { signal };
+    document.getElementById('sidebar-close-btn')?.addEventListener('click', () => this.close(), options);
+    document.getElementById('sidebar-backdrop')?.addEventListener('click', () => this.close(), options);
+    this.toggle.addEventListener('click', () => this.flipDifficulty(), options);
   }
 
   open(): void {

@@ -144,6 +144,7 @@ export class LevelScreen {
   destroy(): void {
     this.stopTimer();
     this.hideGameOver();
+    this.sideMenu.close();
     this.unsubscribe();
     this.controls.abort();
     this.boardView.destroy();
@@ -219,7 +220,7 @@ export class LevelScreen {
 
   private setupHeaderAndTray() {
     const options = { signal: this.controls.signal };
-    this.sideMenu = new SideMenu();
+    this.sideMenu = new SideMenu(this.controls.signal);
     document.getElementById('menu-btn')?.addEventListener('click', () => this.sideMenu.open(), options);
 
     const reset = () => {

@@ -9,18 +9,10 @@ window.addEventListener('DOMContentLoaded', () => {
   const storage = new StorageAdapter();
   let activeLevel: LevelScreen | undefined;
 
-  const scene = new SceneController((level) => {
+  new SceneController((level) => {
     activeLevel?.destroy();
     introContainer.style.display = 'none';
     appContainer.style.display = 'flex';
     activeLevel = new LevelScreen({ level, storage });
-  });
-
-  document.getElementById('menu-btn')?.addEventListener('click', () => {
-    activeLevel?.destroy();
-    activeLevel = undefined;
-    appContainer.style.display = 'none';
-    introContainer.style.display = '';
-    scene.switchToScreen({ type: 'levelSelector' });
   });
 });

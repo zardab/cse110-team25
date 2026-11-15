@@ -39,10 +39,34 @@ describe('Main game level integration', () => {
       <span id="level-status"></span>
       <button id="reset-btn"></button>
       <button id="undo-btn"></button>
+      <button id="menu-btn"></button>
+      <div id="game-sidebar" hidden>
+        <button id="sidebar-close-btn"></button>
+        <button id="difficulty-toggle" data-mode="HARD"></button>
+      </div>
     `;
   });
 
   afterEach(() => screen.destroy());
+
+  it('closes the sidebar on leaving a level and binds each control once on reopening', () => {
+    const menu = document.getElementById('menu-btn')!;
+    const sidebar = document.getElementById('game-sidebar')!;
+    const toggle = document.getElementById('difficulty-toggle')!;
+    screen = new LevelScreen({ level: foundations, storage });
+    menu.click();
+    expect(sidebar.hidden).toBe(false);
+    screen.destroy();
+    expect(sidebar.hidden).toBe(true);
+
+    screen = new LevelScreen({ level: xor, storage });
+    menu.click();
+    expect(sidebar.hidden).toBe(false);
+    toggle.click();
+    expect(toggle.dataset.mode).toBe('EASY');
+    document.getElementById('sidebar-close-btn')!.click();
+    expect(sidebar.hidden).toBe(true);
+  });
 
   it('restores a board by level ID after leaving the level and reopening it', () => {
     screen = new LevelScreen({ level: foundations, storage });
