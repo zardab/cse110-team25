@@ -62,6 +62,44 @@
     </div>
     <div id="palette-grid" class="palette-grid"></div>
   </footer>
+
+  <div id="game-sidebar" class="game-sidebar" hidden>
+    <div id="sidebar-backdrop" class="sidebar-backdrop" aria-hidden="true"></div>
+    <aside class="sidebar-panel" role="dialog" aria-modal="true" aria-label="Game menu">
+      <button id="sidebar-close-btn" class="sidebar-close-btn" type="button" aria-label="Close menu">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+
+      <nav class="sidebar-nav">
+        <button type="button" class="sidebar-nav-btn">Tutorial</button>
+        <button type="button" class="sidebar-nav-btn">Restart</button>
+        <button type="button" class="sidebar-nav-btn">Mini-Games</button>
+
+        <div class="sidebar-difficulty-row">
+          <span class="sidebar-difficulty-label">Difficulty</span>
+          <button
+            id="difficulty-toggle"
+            class="difficulty-toggle"
+            type="button"
+            data-mode="HARD"
+            aria-label="Toggle difficulty"
+          >
+            <span class="difficulty-toggle-thumb" aria-hidden="true"></span>
+            <span class="difficulty-option" data-value="EASY">EASY</span>
+            <span class="difficulty-option" data-value="HARD">HARD</span>
+          </button>
+        </div>
+      </nav>
+
+      <!-- TODO: replace hardcoded Level 5 / 12 with real level progress -->
+      <div class="sidebar-footer">
+        Level 5 <span class="dim">/ 12</span>
+      </div>
+    </aside>
+  </div>
 </div>
 
 <script type="module" src="/src/main.ts"></script>
