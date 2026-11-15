@@ -263,6 +263,27 @@ describe('StorageAdapter', () => {
     expect(adapter.clear()).toBe(false)
   })
 
+  it('preserves saved boards after a failed update and can save again on retry', () => {
+    const storage = new MemoryStorage()
+    const adapter = new StorageAdapter(storage)
+    const first = fixture('one')
+    const second = fixture('two')
+    const replay = { completed: false, stars: 0, placements: { start: 'NULL' } } as const
+    expect(adapter.saveLevel(first, progress())).toBe(true)
+    expect(adapter.saveLevel(second, progress())).toBe(true)
+    const before = storage.data.get(PROGRESS_STORAGE_KEY)
+
+    storage.failWrite = true
+    expect(adapter.saveLevel(first, replay)).toBe(false)
+    expect(storage.data.get(PROGRESS_STORAGE_KEY)).toBe(before)
+
+    storage.failWrite = false
+    expect(adapter.saveLevel(first, replay)).toBe(true)
+    const reloaded = new StorageAdapter(storage)
+    expect(reloaded.loadLevel(first)).toEqual({ ...progress(), placements: replay.placements })
+    expect(reloaded.loadLevel(second)).toEqual(progress())
+  })
+
   it('removes one level, and clears only the namespaced key', () => {
     const storage = new MemoryStorage()
     storage.data.set('unrelated-key', 'keep')
