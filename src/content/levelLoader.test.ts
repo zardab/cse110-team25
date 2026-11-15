@@ -93,6 +93,20 @@ describe('loadLevel', () => {
     expect(loadLevel(definition).executionOrder).toEqual(['start', 'finish'])
   })
 
+  it('allows an intermediate wire to be both a target and an input to another slot', () => {
+    const definition = {
+      ...fixture(),
+      primaryOutputs: ['out_Y', 'wire_not_a'],
+      targetOutputs: { out_Y: 1, wire_not_a: 1 },
+    }
+    const level = loadLevel(JSON.stringify(definition))
+    expect(level.primaryOutputs).toEqual(['out_Y', 'wire_not_a'])
+    expect(level.targetOutputs).toEqual(definition.targetOutputs)
+    expect(level.executionOrder).toEqual(['start', 'finish'])
+    expect(level.slots.finish.inputs[0]).toEqual({ sourceType: 'SLOT_OUTPUT', sourceId: 'start' })
+    expect(() => loadLevel({ ...definition, targetOutputs: { out_Y: 1 } })).toThrow('targetOutputs')
+  })
+
   it.each([
     ['invalid JSON', '{broken', 'JSON'],
     ['null root', null, 'level'],
@@ -185,5 +199,22 @@ describe('loadLevel', () => {
     definition.slots.finish.assignedGate = 'OR'
     definition.availableGatePalette.OR = 0
     expect(() => loadLevel(definition)).toThrow('exceed the available palette')
+  })
+
+  it('counts prefilled gates and restored gates together against the palette', () => {
+    const definition = fixture()
+    definition.slots.start.assignedGate = 'NOT'
+    const withRestoredGate = {
+      ...definition,
+      slots: {
+        ...definition.slots,
+        extra: { ...definition.slots.start, id: 'extra', outputWireId: 'wire_extra' },
+      },
+    }
+
+    expect(() => loadLevel(withRestoredGate)).toThrow('exceed the available palette')
+    const level = loadLevel({ ...withRestoredGate, availableGatePalette: { NOT: 2, OR: 1 } })
+    expect(level.slots.start.assignedGate).toBe('NOT')
+    expect(level.slots.extra.assignedGate).toBe('NOT')
   })
 })
