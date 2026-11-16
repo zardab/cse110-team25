@@ -17,6 +17,15 @@ vi.mock('./components/GameBoardView', () => ({
     destroy() {}
   },
 }));
+vi.mock('./components/boards/Level01FoundationsBoardView', () => ({
+  Level01FoundationsBoardView: class {
+    constructor(opts: typeof options) {
+      options = opts;
+    }
+    render = render;
+    destroy() {}
+  },
+}));
 
 function lastRender() {
   const [level, wireStates] = render.mock.calls.at(-1)!;
@@ -72,7 +81,7 @@ describe('Main game level integration', () => {
     screen.destroy();
 
     screen = new LevelScreen({ level: xor, storage });
-    expect(document.getElementById('level-title')!.textContent).toBe(xor.title);
+    expect(document.getElementById('level-title')!.textContent).toBe('Level 2 / 5');
     expect(render.mock.lastCall![0].slots.slot_xor.assignedGate).toBe('NULL');
     screen.destroy();
 
