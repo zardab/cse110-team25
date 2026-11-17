@@ -127,10 +127,10 @@ describe('GateGuessController', () => {
     expect(labels).toContain('SHOWING TEST 1 OF 2');
   });
 
-  it('goes back to the level selector', () => {
+  it('goes back to the main menu', () => {
     const { click, switcher } = setup();
     click('back-button');
-    expect(switcher.switchToScreen).toHaveBeenCalledWith({ type: 'levelSelector' });
+    expect(switcher.switchToScreen).toHaveBeenCalledWith({ type: 'menu' });
   });
 
   it('counts down from 15 seconds and ends the run when time runs out', () => {

@@ -53,7 +53,7 @@ export class GateGuessController implements ScreenController {
       onGuess: (gate) => this.handleGuess(gate),
       onSelectClue: (index) => this.handleSelectClue(index),
       onAction: () => this.handleAction(),
-      onBack: () => this.screenSwitcher.switchToScreen({ type: 'levelSelector' }),
+      onBack: () => this.screenSwitcher.switchToScreen({ type: 'menu' }),
     });
   }
 

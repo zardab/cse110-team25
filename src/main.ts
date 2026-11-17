@@ -33,9 +33,9 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   };
 
+  // Minigame 1 is "Name That Gate", a Konva screen inside the scene.
   const openMinigame1 = () => {
-    // Connect standalone Minigame 1 here.
-    console.warn("Minigame 1 is not connected yet.");
+    scene.switchToScreen({ type: "gateGuess" });
   };
 
   const openMinigame2 = () => {
@@ -43,7 +43,7 @@ window.addEventListener("DOMContentLoaded", () => {
     console.warn("Minigame 2 is not connected yet.");
   };
 
-  new SceneController(
+  const scene = new SceneController(
     openLevel,
     openMinigame1,
     openMinigame2,
