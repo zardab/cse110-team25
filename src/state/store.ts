@@ -30,7 +30,7 @@ export interface GameState {
   readonly level: LevelConfig;
   /** Gates still available to place. */
   readonly inventory: Inventory;
-  /** Latest evaluation, or null when none is current (Hard mode, until a check action exists). */
+  /** Latest evaluation after the last board change. */
   readonly result: SimulationResult | null;
   /** Every accepted action in order. An undo is logged too; it never erases earlier entries. */
   readonly log: readonly LogEntry[];
@@ -70,8 +70,7 @@ export function createStore(
   startingLevel: LevelConfig,
   evaluate: Evaluate = evaluateCircuit,
 ): GameStore {
-  const isEasy = startingLevel.difficulty === 'EASY';
-
+  // Difficulty is ignored for now (sidebar toggle is visual-only); always live-evaluate.
   // Gates already on the board when the level arrives are not available to place again.
   let inventory: Inventory = startingLevel.availableGatePalette;
   for (const gate of placedGates(startingLevel)) {
@@ -80,7 +79,7 @@ export function createStore(
   }
 
   let level = startingLevel;
-  let result: SimulationResult | null = isEasy ? evaluate(level) : null;
+  let result: SimulationResult | null = evaluate(level);
   let log: readonly LogEntry[] = [];
   // The state before each board change. Old states are never mutated, so keeping them is cheap.
   const undoStack: GameState[] = [];
@@ -106,11 +105,10 @@ export function createStore(
     return true;
   }
 
-  // Easy mode evaluates after every board change; Hard mode drops the stale result instead.
-  // Evaluate first and commit level, inventory and result together, so an evaluator
-  // that throws leaves the store exactly as it was.
+  // Always evaluate after every board change. Evaluate first and commit level, inventory
+  // and result together, so an evaluator that throws leaves the store exactly as it was.
   function mutate(nextLevel: LevelConfig, nextInventory: Inventory, entry: LogEntry): true {
-    const nextResult = isEasy ? evaluate(nextLevel) : null;
+    const nextResult = evaluate(nextLevel);
     undoStack.push(state);
     log = [...log, entry];
     level = nextLevel;

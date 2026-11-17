@@ -49,7 +49,6 @@
     },
     "slot_nor": {
       "id": "slot_nor",
-      "allowedGates": ["NOR"],
       "inputs": [
         {"sourceType": "SLOT_OUTPUT", "sourceId": "slot_or"},
         {"sourceType": "SLOT_OUTPUT", "sourceId": "slot_not"}
@@ -59,7 +58,6 @@
     },
     "slot_and": {
       "id": "slot_and",
-      "allowedGates": ["AND"],
       "inputs": [
         {"sourceType": "SLOT_OUTPUT", "sourceId": "slot_xor"},
         {"sourceType": "PRIMARY_INPUT", "sourceId": "in_F"}
@@ -69,7 +67,6 @@
     },
     "slot_output": {
       "id": "slot_output",
-      "allowedGates": ["OR"],
       "inputs": [
         {"sourceType": "SLOT_OUTPUT", "sourceId": "slot_nor"},
         {"sourceType": "SLOT_OUTPUT", "sourceId": "slot_and"}

@@ -40,7 +40,6 @@
     },
     "slot_nand": {
       "id": "slot_nand",
-      "allowedGates": ["NAND"],
       "inputs": [
         {"sourceType": "SLOT_OUTPUT", "sourceId": "slot_and_left"},
         {"sourceType": "SLOT_OUTPUT", "sourceId": "slot_or_right"}
@@ -50,14 +49,12 @@
     },
     "slot_not": {
       "id": "slot_not",
-      "allowedGates": ["NOT"],
       "inputs": [{"sourceType": "PRIMARY_INPUT", "sourceId": "in_E"}],
       "outputWireId": "out_W",
       "assignedGate": "NULL"
     },
     "slot_output": {
       "id": "slot_output",
-      "allowedGates": ["AND"],
       "inputs": [
         {"sourceType": "SLOT_OUTPUT", "sourceId": "slot_nand"},
         {"sourceType": "SLOT_OUTPUT", "sourceId": "slot_not"}

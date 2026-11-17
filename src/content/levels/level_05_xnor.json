@@ -66,7 +66,6 @@
     },
     "slot_nand": {
       "id": "slot_nand",
-      "allowedGates": ["NAND"],
       "inputs": [
         {"sourceType": "SLOT_OUTPUT", "sourceId": "slot_and"},
         {"sourceType": "SLOT_OUTPUT", "sourceId": "slot_nor"}
@@ -76,14 +75,12 @@
     },
     "slot_not": {
       "id": "slot_not",
-      "allowedGates": ["NOT"],
       "inputs": [{"sourceType": "PRIMARY_INPUT", "sourceId": "in_C"}],
       "outputWireId": "wire_not_c",
       "assignedGate": "NULL"
     },
     "slot_xnor": {
       "id": "slot_xnor",
-      "allowedGates": ["XNOR"],
       "inputs": [
         {"sourceType": "SLOT_OUTPUT", "sourceId": "slot_xor"},
         {"sourceType": "SLOT_OUTPUT", "sourceId": "slot_not"}
@@ -93,7 +90,6 @@
     },
     "slot_or_final": {
       "id": "slot_or_final",
-      "allowedGates": ["OR"],
       "inputs": [
         {"sourceType": "SLOT_OUTPUT", "sourceId": "slot_nand"},
         {"sourceType": "SLOT_OUTPUT", "sourceId": "slot_xnor"}
@@ -103,7 +99,6 @@
     },
     "slot_output": {
       "id": "slot_output",
-      "allowedGates": ["AND"],
       "inputs": [
         {"sourceType": "SLOT_OUTPUT", "sourceId": "slot_or_final"},
         {"sourceType": "PRIMARY_INPUT", "sourceId": "in_H"}

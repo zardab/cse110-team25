@@ -26,6 +26,42 @@ vi.mock('./components/boards/Level01FoundationsBoardView', () => ({
     destroy() {}
   },
 }));
+vi.mock('./components/boards/Level02XorBoardView', () => ({
+  Level02XorBoardView: class {
+    constructor(opts: typeof options) {
+      options = opts;
+    }
+    render = render;
+    destroy() {}
+  },
+}));
+vi.mock('./components/boards/Level03NandBoardView', () => ({
+  Level03NandBoardView: class {
+    constructor(opts: typeof options) {
+      options = opts;
+    }
+    render = render;
+    destroy() {}
+  },
+}));
+vi.mock('./components/boards/Level04NorBoardView', () => ({
+  Level04NorBoardView: class {
+    constructor(opts: typeof options) {
+      options = opts;
+    }
+    render = render;
+    destroy() {}
+  },
+}));
+vi.mock('./components/boards/Level05XnorBoardView', () => ({
+  Level05XnorBoardView: class {
+    constructor(opts: typeof options) {
+      options = opts;
+    }
+    render = render;
+    destroy() {}
+  },
+}));
 
 function lastRender() {
   const [level, wireStates] = render.mock.calls.at(-1)!;
@@ -159,16 +195,17 @@ describe('Main game level integration', () => {
     expect(render.mock.lastCall![1].out_Y).toBe(1);
   });
 
-  it('restores Hard mode placements with wire feedback hidden', () => {
+  it('restores placements with live wire feedback on formerly HARD levels', () => {
     screen = new LevelScreen({ level: nand, storage });
     options.onPlaceGate('slot_nand', 'NAND');
     expect(storage.getProgress()[nand.id].completed).toBe(false);
+    expect(render.mock.lastCall![1].out_Z).toBe(0);
     screen.destroy();
 
     screen = new LevelScreen({ level: nand, storage: new StorageAdapter() });
     const [level, wireStates] = render.mock.lastCall!;
     expect(level.slots.slot_nand.assignedGate).toBe('NAND');
-    expect(wireStates).toEqual({});
+    expect(wireStates.out_Z).toBe(0);
   });
 });
 

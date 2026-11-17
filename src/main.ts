@@ -2,6 +2,7 @@ import './index.css';
 import { SceneController } from './ui_behavior/SceneController';
 import { LevelScreen } from './ui/LevelScreen';
 import { StorageAdapter } from './persistence/storageAdapter';
+import type { LevelConfig } from './types/circuit';
 
 window.addEventListener('DOMContentLoaded', () => {
   const introContainer = document.getElementById('container')!;
@@ -9,10 +10,17 @@ window.addEventListener('DOMContentLoaded', () => {
   const storage = new StorageAdapter();
   let activeLevel: LevelScreen | undefined;
 
-  new SceneController((level) => {
+  const openLevel = (level: LevelConfig) => {
     activeLevel?.destroy();
     introContainer.style.display = 'none';
     appContainer.style.display = 'flex';
-    activeLevel = new LevelScreen({ level, storage });
-  });
+    activeLevel = new LevelScreen({
+      level,
+      storage,
+      onNextLevel: openLevel,
+      onPreviousLevel: openLevel,
+    });
+  };
+
+  new SceneController(openLevel);
 });
