@@ -22,7 +22,6 @@
   "slots": {
     "slot_or": {
       "id": "slot_or",
-      "allowedGates": ["OR"],
       "inputs": [
         {"sourceType": "PRIMARY_INPUT", "sourceId": "in_A"},
         {"sourceType": "PRIMARY_INPUT", "sourceId": "in_B"}
@@ -32,14 +31,12 @@
     },
     "slot_not": {
       "id": "slot_not",
-      "allowedGates": ["NOT"],
       "inputs": [{"sourceType": "PRIMARY_INPUT", "sourceId": "in_C"}],
       "outputWireId": "wire_not_c",
       "assignedGate": "NOT"
     },
     "slot_xor": {
       "id": "slot_xor",
-      "allowedGates": ["XOR"],
       "inputs": [
         {"sourceType": "PRIMARY_INPUT", "sourceId": "in_D"},
         {"sourceType": "PRIMARY_INPUT", "sourceId": "in_E"}

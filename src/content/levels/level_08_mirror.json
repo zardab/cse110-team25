@@ -1,0 +1,153 @@
+{
+  "id": "level_08_mirror",
+  "title": "Mirror Match",
+  "difficulty": "HARD",
+  "availableGatePalette": {
+    "XOR": 2,
+    "XNOR": 1,
+    "NOT": 1,
+    "OR": 1,
+    "NAND": 1,
+    "NOR": 1
+  },
+  "primaryInputs": [
+    "in_A",
+    "in_B",
+    "in_C",
+    "in_D",
+    "in_E"
+  ],
+  "primaryOutputs": [
+    "out_Z",
+    "out_W",
+    "out_Y"
+  ],
+  "inputValues": {
+    "in_A": 0,
+    "in_B": 1,
+    "in_C": 1,
+    "in_D": 0,
+    "in_E": 1
+  },
+  "slots": {
+    "slot_xor_ab": {
+      "id": "slot_xor_ab",
+      "inputs": [
+        {
+          "sourceType": "PRIMARY_INPUT",
+          "sourceId": "in_A"
+        },
+        {
+          "sourceType": "PRIMARY_INPUT",
+          "sourceId": "in_B"
+        }
+      ],
+      "outputWireId": "wire_xor_ab",
+      "assignedGate": "XOR"
+    },
+    "slot_xor_cd": {
+      "id": "slot_xor_cd",
+      "inputs": [
+        {
+          "sourceType": "PRIMARY_INPUT",
+          "sourceId": "in_C"
+        },
+        {
+          "sourceType": "PRIMARY_INPUT",
+          "sourceId": "in_D"
+        }
+      ],
+      "outputWireId": "wire_xor_cd",
+      "assignedGate": "XOR"
+    },
+    "slot_compare": {
+      "id": "slot_compare",
+      "allowedGates": [
+        "AND",
+        "NOR",
+        "XNOR"
+      ],
+      "inputs": [
+        {
+          "sourceType": "SLOT_OUTPUT",
+          "sourceId": "slot_xor_ab"
+        },
+        {
+          "sourceType": "SLOT_OUTPUT",
+          "sourceId": "slot_xor_cd"
+        }
+      ],
+      "outputWireId": "out_Z",
+      "assignedGate": "NULL"
+    },
+    "slot_not": {
+      "id": "slot_not",
+      "inputs": [
+        {
+          "sourceType": "PRIMARY_INPUT",
+          "sourceId": "in_E"
+        }
+      ],
+      "outputWireId": "wire_not_e",
+      "assignedGate": "NULL"
+    },
+    "slot_gate": {
+      "id": "slot_gate",
+      "allowedGates": [
+        "AND",
+        "NAND",
+        "NOR"
+      ],
+      "inputs": [
+        {
+          "sourceType": "SLOT_OUTPUT",
+          "sourceId": "slot_compare"
+        },
+        {
+          "sourceType": "SLOT_OUTPUT",
+          "sourceId": "slot_not"
+        }
+      ],
+      "outputWireId": "out_W",
+      "assignedGate": "NULL"
+    },
+    "slot_output": {
+      "id": "slot_output",
+      "allowedGates": [
+        "AND",
+        "OR",
+        "NAND"
+      ],
+      "inputs": [
+        {
+          "sourceType": "SLOT_OUTPUT",
+          "sourceId": "slot_gate"
+        },
+        {
+          "sourceType": "PRIMARY_INPUT",
+          "sourceId": "in_A"
+        }
+      ],
+      "outputWireId": "out_Y",
+      "assignedGate": "NULL"
+    }
+  },
+  "hints": [
+    {
+      "message": "XNOR lights up when its two inputs match."
+    },
+    {
+      "triggerSlotId": "slot_compare",
+      "message": "Both XOR branches produce the same value."
+    },
+    {
+      "triggerSlotId": "slot_gate",
+      "message": "Only one of these gates outputs 1 here. Check what that leaves for the final slot."
+    }
+  ],
+  "targetOutputs": {
+    "out_Z": 1,
+    "out_W": 1,
+    "out_Y": 1
+  }
+}

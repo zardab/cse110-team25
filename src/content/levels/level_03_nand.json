@@ -20,7 +20,6 @@
   "slots": {
     "slot_and_left": {
       "id": "slot_and_left",
-      "allowedGates": ["AND"],
       "inputs": [
         {"sourceType": "PRIMARY_INPUT", "sourceId": "in_A"},
         {"sourceType": "PRIMARY_INPUT", "sourceId": "in_B"}
@@ -30,7 +29,6 @@
     },
     "slot_or_right": {
       "id": "slot_or_right",
-      "allowedGates": ["OR"],
       "inputs": [
         {"sourceType": "PRIMARY_INPUT", "sourceId": "in_C"},
         {"sourceType": "PRIMARY_INPUT", "sourceId": "in_D"}

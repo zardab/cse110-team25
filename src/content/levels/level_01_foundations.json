@@ -17,7 +17,6 @@
   "slots": {
     "slot_not": {
       "id": "slot_not",
-      "allowedGates": ["NOT"],
       "inputs": [{"sourceType": "PRIMARY_INPUT", "sourceId": "in_A"}],
       "outputWireId": "wire_not_a",
       "assignedGate": "NOT"

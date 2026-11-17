@@ -1,26 +1,48 @@
-import './index.css';
-import { SceneController } from './ui_behavior/SceneController';
-import { LevelScreen } from './ui/LevelScreen';
-import { StorageAdapter } from './persistence/storageAdapter';
-import type { LevelConfig } from './types/circuit';
+import "./index.css";
+import { SceneController } from "./ui_behavior/SceneController";
+import { LevelScreen } from "./ui/LevelScreen";
+import { StorageAdapter } from "./persistence/storageAdapter";
+import { mainLevels } from "./content/levelCatalog";
+import type { LevelConfig } from "./types/circuit";
 
-window.addEventListener('DOMContentLoaded', () => {
-  const introContainer = document.getElementById('container')!;
-  const appContainer = document.getElementById('app')!;
+window.addEventListener("DOMContentLoaded", () => {
+  const introContainer = document.getElementById("container")!;
+  const appContainer = document.getElementById("app")!;
+  
   const storage = new StorageAdapter();
   let activeLevel: LevelScreen | undefined;
-
-  const openLevel = (level: LevelConfig) => {
+  
+  const showLevel = (level: LevelConfig) => {
     activeLevel?.destroy();
-    introContainer.style.display = 'none';
-    appContainer.style.display = 'flex';
+    introContainer.style.display = "none";
+    appContainer.style.display = "flex";
     activeLevel = new LevelScreen({
       level,
       storage,
-      onNextLevel: openLevel,
-      onPreviousLevel: openLevel,
+      onNextLevel: showLevel,
+      onPreviousLevel: showLevel,
     });
   };
 
-  new SceneController(openLevel);
+  // Opens a level by ID
+  const openLevel = (levelId: string) => {
+    const level = mainLevels.find((entry) => entry.id === levelId);
+    if (!level) {
+      console.error(`Unknown level: ${levelId}`);
+      return;
+    }
+    showLevel(level);
+  };
+  
+  // Minigame 1 is "Name That Gate", a Konva screen inside the scene.
+  const openMinigame1 = () => {
+    scene.switchToScreen({ type: "gateGuess" });
+  };
+  
+  const openMinigame2 = () => {
+    // Connect standalone Minigame 2 here.
+    console.warn("Minigame 2 is not connected yet.");
+  };
+
+  const scene = new SceneController(openLevel, openMinigame1, openMinigame2);
 });

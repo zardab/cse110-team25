@@ -44,10 +44,10 @@ const LEVEL_1_CONFIG: LevelConfig = {
   inputValues: { in_A: 1, in_B: 0 },
   targetOutputs: { out_Y: 1 },
   executionOrder: ['slot_1'],
+
   slots: {
     slot_1: {
       id: 'slot_1',
-      allowedGates: ['OR', 'AND'],
       assignedGate: 'NULL',
       inputs: [
         { sourceType: 'PRIMARY_INPUT', sourceId: 'in_A' },
@@ -345,6 +345,7 @@ export class LevelScreen {
         });
       }
       card.addEventListener('dragstart', (e) => {
+        (e as DragEvent).dataTransfer?.setData('gateType', gate);
         (e as DragEvent).dataTransfer?.setData('gateType', gate);
       });
     });
