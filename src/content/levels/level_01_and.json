@@ -21,9 +21,6 @@
   "slots": {
     "slot_1": {
       "id": "slot_1",
-      "allowedGates": [
-        "AND"
-      ],
       "inputs": [
         {
           "sourceType": "PRIMARY_INPUT",

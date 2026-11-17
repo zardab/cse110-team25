@@ -28,10 +28,6 @@
   "slots": {
     "slot_left": {
       "id": "slot_left",
-      "allowedGates": [
-        "AND",
-        "XOR"
-      ],
       "inputs": [
         {
           "sourceType": "PRIMARY_INPUT",
@@ -47,10 +43,6 @@
     },
     "slot_right": {
       "id": "slot_right",
-      "allowedGates": [
-        "OR",
-        "NOR"
-      ],
       "inputs": [
         {
           "sourceType": "PRIMARY_INPUT",
@@ -66,10 +58,6 @@
     },
     "slot_output": {
       "id": "slot_output",
-      "allowedGates": [
-        "OR",
-        "NOR"
-      ],
       "inputs": [
         {
           "sourceType": "SLOT_OUTPUT",
@@ -86,7 +74,7 @@
   },
   "hints": [
     {
-      "message": "Some slots accept more than one gate. Read the target lights to decide which one fits."
+      "message": "Read the target lights to decide which gate fits each slot."
     },
     {
       "triggerSlotId": "slot_left",
@@ -94,7 +82,7 @@
     },
     {
       "triggerSlotId": "slot_output",
-      "message": "You only have one OR and one NOR. Spend them wisely."
+      "message": "You only have one of each gate. Spend them wisely."
     }
   ],
   "targetOutputs": {

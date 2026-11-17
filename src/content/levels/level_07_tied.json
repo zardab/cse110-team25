@@ -28,7 +28,9 @@
     "slot_and": {
       "id": "slot_and",
       "allowedGates": [
-        "AND"
+        "AND",
+        "OR",
+        "XOR"
       ],
       "inputs": [
         {
@@ -46,7 +48,9 @@
     "slot_nand_tied": {
       "id": "slot_nand_tied",
       "allowedGates": [
-        "NAND"
+        "OR",
+        "NAND",
+        "XNOR"
       ],
       "inputs": [
         {
@@ -63,9 +67,6 @@
     },
     "slot_nor_tied": {
       "id": "slot_nor_tied",
-      "allowedGates": [
-        "NOR"
-      ],
       "inputs": [
         {
           "sourceType": "PRIMARY_INPUT",
@@ -81,11 +82,6 @@
     },
     "slot_output": {
       "id": "slot_output",
-      "allowedGates": [
-        "AND",
-        "XOR",
-        "XNOR"
-      ],
       "inputs": [
         {
           "sourceType": "SLOT_OUTPUT",
