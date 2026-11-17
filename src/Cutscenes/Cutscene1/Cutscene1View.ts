@@ -2,27 +2,29 @@
 import Konva from "konva";
 import type { View } from "../../screenTypes.ts";
 import { loadImage } from "../../ui_behavior/loadImage.ts";
+
 import coblenzeUrl from "../../assets/Coblenze.png";
 import backgroundUrl from "../../assets/bedroomBackground.jpg";
+import monitorUrl from "../../assets/monitor.png";
 
 // All positions and dimensions are relative to screen size
 const COBLENZE_IMAGE = {
 	x: 0.5,
-	y: 0.21,
-	width: 0.5,
+	y: 0.38,
+	width: 0.38,
 	height: 0.5,
 };
 
 const MONITOR = {
-	x: 0.2875,
-	y: 0.554,
+	x: 0.288,
+	y: 0.64,
 	width: 0.405,
-	height: 0.396,
+	height: 0.45,
 };
 
 /**
- * Cutscene1View - Renders cutscene 1: a background, Coblenze and a monitor,
- * a black screen, subtitles, and a darkness overlay.
+ * Cutscene1View - Renders cutscene 1: a background, Coblenze,
+ * a monitor image, a black screen, subtitles, and a darkness overlay.
  */
 export class Cutscene1View implements View {
 	private group = new Konva.Group();
@@ -82,16 +84,21 @@ export class Cutscene1View implements View {
 			this.group.getLayer()?.draw();
 		});
 
-		// Monitor
-		this.group.add(
-			new Konva.Rect({
-				x: width * MONITOR.x,
-				y: height * MONITOR.y,
-				width: width * MONITOR.width,
-				height: height * MONITOR.height,
-				fill: "gray",
-			}),
-		);
+		// Monitor image
+		const monitor = new Konva.Image({
+			x: width * MONITOR.x,
+			y: height * MONITOR.y,
+			width: width * MONITOR.width,
+			height: height * MONITOR.height,
+			image: undefined,
+			listening: false,
+		});
+		this.group.add(monitor);
+
+		loadImage(monitorUrl).then((img) => {
+			monitor.image(img);
+			this.group.getLayer()?.draw();
+		});
 
 		// Black screen
 		this.blackScreen = new Konva.Rect({
@@ -125,6 +132,20 @@ export class Cutscene1View implements View {
 			align: "center",
 		});
 		this.group.add(this.subtitle);
+
+		// Skip instruction
+		const skipText = new Konva.Text({
+			x: 0,
+			y: height * 0.035,
+			width,
+			text: "Press [SPACE] to skip",
+			fontSize: height * 0.03,
+			fill: "white",
+			opacity: 0.3,
+			align: "center",
+			listening: false,
+		});
+		this.group.add(skipText);
 	}
 
 	hideBlackScreen(): void {

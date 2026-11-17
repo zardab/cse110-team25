@@ -1,3 +1,4 @@
+
 import type { ScreenController, ScreenSwitcher } from "../screenTypes.ts";
 import { MainMenuView } from "./MainMenuView.ts";
 
@@ -11,18 +12,21 @@ export class MainMenuController implements ScreenController {
 
 	constructor(screenSwitcher: ScreenSwitcher, width: number, height: number) {
 		this.screenSwitcher = screenSwitcher;
-		this.view = new MainMenuView(width, height, () => this.handleStartClick());
+
+		this.view = new MainMenuView(
+			width,
+			height,
+			() => this.handleStartClick(),
+			() => this.handleMinigame1Click(),
+			() => this.handleMinigame2Click(),
+		);
 	}
 
-	/** Called each time the menu appears. */
 	start(): void {
 		this.startClicked = false;
 	}
 
-	/**
-	 * Handle start button click. Only the first click counts: the button
-	 * ignores input while the menu fades out.
-	 */
+	// Main game: START -> Cutscene 1
 	private handleStartClick(): void {
 		if (this.startClicked) return;
 		this.startClicked = true;
@@ -30,6 +34,22 @@ export class MainMenuController implements ScreenController {
 		this.view.fadeOut(() =>
 			this.screenSwitcher.switchToScreen({ type: "cutscene1" }),
 		);
+	}
+
+	// Standalone Minigame 1
+	private handleMinigame1Click(): void {
+		if (this.startClicked) return;
+		this.startClicked = true;
+
+		this.screenSwitcher.switchToScreen({ type: "minigame1" });
+	}
+
+	// Standalone Minigame 2
+	private handleMinigame2Click(): void {
+		if (this.startClicked) return;
+		this.startClicked = true;
+
+		this.screenSwitcher.switchToScreen({ type: "minigame2" });
 	}
 
 	getView(): MainMenuView {

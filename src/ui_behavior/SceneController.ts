@@ -8,21 +8,27 @@ import type {
 
 import { MainMenuController } from "./MainMenuController.ts";
 import { Cutscene1Controller } from "../Cutscenes/Cutscene1/Cutscene1Controller.ts";
-import { LevelSelectorController } from "./LevelSelectorController.ts";
+import { locateBreakerBoxController } from "./locateBreakerBoxController.ts";
 import { mainLevels } from "../content/levelCatalog";
 import type { LevelConfig } from "../types/circuit";
 
-type KonvaScreenId = Exclude<ScreenId["type"], "level1">;
+// Screens managed directly by Konva
+type KonvaScreenId = Exclude<
+  ScreenId["type"],
+  "level1" | "minigame1" | "minigame2"
+>;
 
-/**
- * SceneController - Owns the canvas and decides which screen is showing
- */
+// Handles creating screens and switching between them.
 export class SceneController implements ScreenSwitcher {
   private stage: Konva.Stage;
   private layer = new Konva.Layer();
   private screens: Record<KonvaScreenId, ScreenController>;
 
-  constructor(private onLevel: (level: LevelConfig) => void) {
+  constructor(
+    private onLevel1: () => void,
+    private onMinigame1: () => void,
+    private onMinigame2: () => void,
+  ) {
     const width = window.innerWidth;
     const height = window.innerHeight;
 
@@ -40,12 +46,18 @@ export class SceneController implements ScreenSwitcher {
       cutscene1: new Cutscene1Controller(
         width,
         height,
-        () => this.switchToScreen({ type: "levelSelector" }),
+        () =>
+          this.switchToScreen({
+            type: "locateBreakerBox",
+          }),
       ),
 
-      levelSelector: new LevelSelectorController(
+      locateBreakerBox: new locateBreakerBoxController(
+        this.stage,
         width,
         height,
+        3,
+        () => this.openLevel1(),
         mainLevels,
         (id) => this.openLevel(id),
       ),
@@ -58,9 +70,20 @@ export class SceneController implements ScreenSwitcher {
     this.switchToScreen({ type: "menu" });
   }
 
-  switchToScreen(screen: ScreenId): void {
+  // Switch between screens.
+  public switchToScreen(screen: ScreenId): void {
     if (screen.type === "level1") {
-      this.openLevel(mainLevels[0].id);
+      this.openLevel1();
+      return;
+    }
+
+    if (screen.type === "minigame1") {
+      this.openMinigame1();
+      return;
+    }
+
+    if (screen.type === "minigame2") {
+      this.openMinigame2();
       return;
     }
 
@@ -76,22 +99,38 @@ export class SceneController implements ScreenSwitcher {
     this.screens[screen.type].start?.();
   }
 
-  private openLevel(id: string): void {
-    const level = mainLevels.find((candidate) => candidate.id === id);
-    if (!level) return;
+  // Hide all Konva screens.
+  private hideAllScreens(): void {
     for (const controller of Object.values(this.screens)) {
       controller.stop?.();
       controller.getView().hide();
     }
-
-    this.onLevel(level);
   }
 
-  destroy(): void {
+  // Open the main game's Level 1.
+  private openLevel1(): void {
+    this.hideAllScreens();
+    this.onLevel1();
+  }
+
+  // Open standalone Minigame 1.
+  private openMinigame1(): void {
+    this.hideAllScreens();
+    this.onMinigame1();
+  }
+
+  // Open standalone Minigame 2.
+  private openMinigame2(): void {
+    this.hideAllScreens();
+    this.onMinigame2();
+  }
+
+  public destroy(): void {
     for (const controller of Object.values(this.screens)) {
       controller.stop?.();
     }
 
+    this.stage.off(".locateBreakerBox");
     this.stage.destroy();
   }
 }

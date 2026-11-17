@@ -1,4 +1,3 @@
-
 import type { ScreenController } from "../screenTypes.ts";
 import { LevelSelectorView } from "./LevelSelectorView.ts";
 import type { LevelConfig } from "../types/circuit";
@@ -23,6 +22,14 @@ export class LevelSelectorController implements ScreenController {
     );
   }
 
+  //Changes to level 1 when the level button is pressed
+  private handleLevelClick(levelId: string): void {
+    if (levelId === "level1") {
+      this.onLevel1();
+    }
+  }
+
+  //for view modification
   getView(): LevelSelectorView {
     return this.view;
   }

@@ -17,8 +17,7 @@ type LevelButton = {
 const BUTTON_STYLE = { width: 235, height: 42, fontSize: 20 };
 
 /**
- * LevelSelectorView - Renders the level selector: a black screen with a
- * centered menu image and one labeled button per level
+ * LevelSelectorView - Renders the level selector: a black screen with a centered menu image and one labeled button per level
  */
 export class LevelSelectorView implements View {
 	private group = new Konva.Group();
