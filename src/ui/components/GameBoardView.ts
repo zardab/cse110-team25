@@ -89,19 +89,12 @@ export class GameBoardView {
       if (isHigh) this.layer.add(new Konva.Circle({ x, y, radius: 28, fill: '#FEF08A', opacity: 0.6 }));
       this.layer.add(new Konva.Circle({ x, y, radius: 22, fill: isHigh ? '#FACC15' : '#E5E7EB' }));
       this.layer.add(new Konva.Text({ x, y, text: '💡', fontSize: 24, offsetX: 12, offsetY: 12 }));
-      this.layer.add(new Konva.Text({
-        x: x + 30, y: y - 13, fill: '#4B5563', fontSize: 13,
-        text: `${id}: ${signal ?? '—'}\nTarget: ${level.targetOutputs[id]}`,
-      }));
     });
     for (const [id, point] of inputs) {
       const value = level.inputValues[id];
       this.layer.add(new Konva.Text({
         x: point.x - 15, y: point.y, text: '⚡', fontSize: 26,
         fill: value ? '#EAB308' : '#9CA3AF', offsetX: 13, offsetY: 13,
-      }));
-      this.layer.add(new Konva.Text({
-        x: 12, y: point.y - 7, fontSize: 14, fill: '#374151', text: `${id}: ${value}`,
       }));
     }
     for (const [id, position] of this.slotPositions) {
