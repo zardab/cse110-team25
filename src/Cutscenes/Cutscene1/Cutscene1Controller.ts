@@ -1,32 +1,22 @@
-
 import type { ScreenController } from "../../screenTypes.ts";
 import { Cutscene1View } from "./Cutscene1View.ts";
 
 type Line = { atMs: number; text: string; bounce?: boolean };
 
-/**
- * Cutscene1Controller - Runs the timing of cutscene 1: when the black screen
- * lifts, which subtitles appear, and when the darkness arrives.
- */
 export class Cutscene1Controller implements ScreenController {
 	private view: Cutscene1View;
 	private onFinish: () => void;
 	private timers: number[] = [];
 	private subtitleTimer?: number;
+	private active = false;
 
-	// Subtitle display duration
 	private subtitleDurationMs = 1000;
 
-	// The script: what to say and when (milliseconds after the cutscene starts)
 	private lines: Line[] = [
 		{ atMs: 500, text: "It's dark in here..." },
-
 		{ atMs: 3500, text: "There we go!", bounce: true },
-
 		{ atMs: 5000, text: "Finally, time to doomscroll!", bounce: true },
-
 		{ atMs: 12500, text: "Was that the breaker box?", bounce: true },
-
 		{ atMs: 15000, text: "Time to fix some circuits.", bounce: true },
 	];
 
@@ -41,9 +31,27 @@ export class Cutscene1Controller implements ScreenController {
 		this.onFinish = onFinish;
 	}
 
-	/** Called each time the cutscene appears. */
+	// Press Space to skip the cutscene.
+	private handleKeyDown = (event: KeyboardEvent): void => {
+		if (event.code === "Space" && this.active) {
+			event.preventDefault();
+			this.finish();
+		}
+	};
+
+	// End the cutscene immediately.
+	private finish(): void {
+		if (!this.active) return;
+
+		this.stop();
+		this.onFinish();
+	}
+
 	start(): void {
 		this.stop();
+		this.active = true;
+
+		window.addEventListener("keydown", this.handleKeyDown);
 
 		this.after(this.blackScreenMs, () => this.view.hideBlackScreen());
 
@@ -62,15 +70,10 @@ export class Cutscene1Controller implements ScreenController {
 		this.after(this.flipMs1, () => this.view.flipImage());
 		this.after(this.flipMs2, () => this.view.flipImage());
 
-		this.after(this.endMs, () => {
-			this.clearSubtitle();
-			this.onFinish();
-		});
+		this.after(this.endMs, () => this.finish());
 	}
 
-	/** Shows a subtitle and automatically clears it after the display duration. */
 	private showSubtitle(text: string): void {
-		// Cancel the previous subtitle's dismissal timer
 		if (this.subtitleTimer !== undefined) {
 			window.clearTimeout(this.subtitleTimer);
 		}
@@ -83,7 +86,6 @@ export class Cutscene1Controller implements ScreenController {
 		}, this.subtitleDurationMs);
 	}
 
-	/** Clears the subtitle and its pending timer. */
 	private clearSubtitle(): void {
 		if (this.subtitleTimer !== undefined) {
 			window.clearTimeout(this.subtitleTimer);
@@ -93,8 +95,11 @@ export class Cutscene1Controller implements ScreenController {
 		this.view.clearSubtitle();
 	}
 
-	/** Cancels every pending timer (called when leaving the screen). */
 	stop(): void {
+		this.active = false;
+
+		window.removeEventListener("keydown", this.handleKeyDown);
+
 		for (const id of this.timers) {
 			window.clearTimeout(id);
 		}
@@ -107,7 +112,6 @@ export class Cutscene1Controller implements ScreenController {
 		return this.view;
 	}
 
-	/** Runs an action after a delay, remembering the timer so stop() can cancel it. */
 	private after(delayMs: number, action: () => void): void {
 		this.timers.push(window.setTimeout(action, delayMs));
 	}

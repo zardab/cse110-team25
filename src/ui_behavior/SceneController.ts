@@ -9,17 +9,27 @@ import type {
 import { MainMenuController } from "./MainMenuController.ts";
 import { Cutscene1Controller } from "../Cutscenes/Cutscene1/Cutscene1Controller.ts";
 import { LevelSelectorController } from "./LevelSelectorController.ts";
+import { locateBreakerBoxController } from "./locateBreakerBoxController.ts";
 import { mainLevels } from "../content/levelCatalog";
-import type { LevelConfig } from "../types/circuit";
 
-type KonvaScreenId = Exclude<ScreenId["type"], "level1">;
+type KonvaScreenId =
+  | "menu"
+  | "cutscene1"
+  | "levelSelector"
+  | "locateBreakerBox";
 
 export class SceneController implements ScreenSwitcher {
   private stage: Konva.Stage;
   private layer = new Konva.Layer();
   private screens: Record<KonvaScreenId, ScreenController>;
 
-  constructor(private onLevel: (level: LevelConfig) => void) {
+  private breakerController: locateBreakerBoxController;
+
+  constructor(
+    private onLevel: (levelId: string) => void,
+    private onMinigame1: () => void,
+    private onMinigame2: () => void,
+  ) {
     const width = window.innerWidth;
     const height = window.innerHeight;
 
@@ -31,38 +41,64 @@ export class SceneController implements ScreenSwitcher {
 
     this.stage.add(this.layer);
 
+    this.breakerController = new locateBreakerBoxController(
+      this.stage,
+      width,
+      height,
+      1,
+      (levelId) => this.openLevel(levelId),
+    );
+
     this.screens = {
       menu: new MainMenuController(this, width, height),
 
       cutscene1: new Cutscene1Controller(
         width,
         height,
-        () => this.switchToScreen({ type: "levelSelector" }),
+        () => this.showKonvaScreen("levelSelector"),
       ),
 
       levelSelector: new LevelSelectorController(
         width,
         height,
         mainLevels,
-        (id) => this.openLevel(id),
+        (id) => this.startLevelCutscene(id),
       ),
+
+      locateBreakerBox: this.breakerController,
     };
 
-    for (const screen of Object.values(this.screens)) {
-      this.layer.add(screen.getView().getGroup());
+    for (const controller of Object.values(this.screens)) {
+      this.layer.add(controller.getView().getGroup());
     }
 
-    this.switchToScreen({ type: "menu" });
+    this.showKonvaScreen("menu");
   }
 
-  switchToScreen(screen: ScreenId): void {
-    if (screen.type === "level1") {
-      this.openLevel(mainLevels[0].id);
+  // Level Selector -> Flashlight cutscene
+  private startLevelCutscene(levelId: string): void {
+    const levelIndex = mainLevels.findIndex(
+      (level) => level.id === levelId,
+    );
+
+    if (levelIndex === -1) {
+      console.error(`Unknown level: ${levelId}`);
       return;
     }
 
+    const levelNumber = levelIndex + 1;
+
+    this.breakerController.setLevel(
+      levelNumber,
+      levelId,
+    );
+
+    this.showKonvaScreen("locateBreakerBox");
+  }
+
+  private showKonvaScreen(screenId: KonvaScreenId): void {
     for (const [name, controller] of Object.entries(this.screens)) {
-      if (name === screen.type) {
+      if (name === screenId) {
         controller.getView().show();
       } else {
         controller.stop?.();
@@ -70,25 +106,63 @@ export class SceneController implements ScreenSwitcher {
       }
     }
 
-    this.screens[screen.type].start?.();
+    this.screens[screenId].start?.();
+    this.layer.batchDraw();
   }
 
-  private openLevel(id: string): void {
-    const level = mainLevels.find((candidate) => candidate.id === id);
-    if (!level) return;
+  public switchToScreen(screen: ScreenId): void {
+    switch (screen.type) {
+      case "menu":
+        this.showKonvaScreen("menu");
+        return;
+
+      case "cutscene1":
+        this.showKonvaScreen("cutscene1");
+        return;
+
+      case "levelSelector":
+        this.showKonvaScreen("levelSelector");
+        return;
+
+      case "locateBreakerBox":
+        this.showKonvaScreen("locateBreakerBox");
+        return;
+
+      case "level1":
+        this.startLevelCutscene("level1");
+        return;
+
+      case "minigame1":
+        this.hideAllScreens();
+        this.onMinigame1();
+        return;
+
+      case "minigame2":
+        this.hideAllScreens();
+        this.onMinigame2();
+        return;
+    }
+  }
+
+  private hideAllScreens(): void {
     for (const controller of Object.values(this.screens)) {
       controller.stop?.();
       controller.getView().hide();
     }
-
-    this.onLevel(level);
   }
 
-  destroy(): void {
+  // Flashlight breaker clicked -> Circuit level
+  private openLevel(levelId: string): void {
+    this.hideAllScreens();
+    this.onLevel(levelId);
+  }
+
+  public destroy(): void {
     for (const controller of Object.values(this.screens)) {
       controller.stop?.();
     }
 
+    this.stage.off(".flashlight");
     this.stage.destroy();
   }
 }
