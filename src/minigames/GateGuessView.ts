@@ -112,12 +112,15 @@ export class GateGuessView implements View {
       name: 'back-button', x: 0, y: 0, width: 110, height: 38, label: '← BACK',
       onClick: this.handlers.onBack, fill: 'transparent', stroke: COLOR.dim,
     }));
+    // The title and subtitle span the full board width and overlap the back button,
+    // so they must not listen for pointer events or they swallow its clicks.
     this.board.add(new Konva.Text({
       x: 0, y: 10, width: BOARD.width, align: 'center', text: 'NAME THAT GATE',
-      fontSize: 34, fontStyle: 'bold', fontFamily: FONT, fill: COLOR.text,
+      fontSize: 34, fontStyle: 'bold', fontFamily: FONT, fill: COLOR.text, listening: false,
     }));
     this.board.add(new Konva.Text({
       x: 0, y: 52, width: BOARD.width, align: 'center', fontSize: 15, fontFamily: FONT, fill: COLOR.dim,
+      listening: false,
       text: 'A gate is hidden in the box. Use the tests to work out which one.',
     }));
     const hearts = '♥'.repeat(model.lives) + '♡'.repeat(Math.max(0, MAX_LIVES - model.lives));
