@@ -1,9 +1,13 @@
 import { GameBoardView } from './components/GameBoardView';
+import { Level01FoundationsBoardView } from './components/boards/Level01FoundationsBoardView';
 import { SideMenu } from './components/SideMenu';
 import { createStore, type GameState, type GameStore } from '../state/store';
 import type { GateType, LevelConfig } from '../types/circuit';
 import { LevelValidationError, loadLevel } from '../content/levelLoader';
 import type { StorageAdapter } from '../persistence/storageAdapter';
+import { mainLevels } from '../content/levelCatalog';
+
+type BoardView = GameBoardView | Level01FoundationsBoardView;
 
 const DEFAULT_MINIGAME_DURATION_SECONDS = 15;
 
@@ -43,7 +47,7 @@ const LEVEL_1_CONFIG: LevelConfig = {
 export class LevelScreen {
   private store!: GameStore;
   private unsubscribe = () => {};
-  private boardView: GameBoardView;
+  private boardView: BoardView;
   private sideMenu!: SideMenu;
   private readonly startingLevel: LevelConfig;
   private readonly storage?: StorageAdapter;
@@ -70,23 +74,29 @@ export class LevelScreen {
     if (timerDisplay) timerDisplay.hidden = !this.timed;
 
     const container = document.getElementById('konva-container') as HTMLDivElement;
-
-    // Initialize Vanilla Konva Canvas Renderer. The store validates every move,
-    // so untrusted drag-and-drop data can be dispatched as is.
-    this.boardView = new GameBoardView({
+    const boardOptions = {
       container,
       levelConfig: this.startingLevel,
-      onPlaceGate: (slotId, gate) => {
+      onPlaceGate: (slotId: string, gate: GateType) => {
         if (!this.gameEnded) this.store.dispatch({ type: 'PLACE_GATE', slotId, gate });
       },
-      onRemoveGate: (slotId) => {
+      onRemoveGate: (slotId: string) => {
         if (!this.gameEnded) this.store.dispatch({ type: 'REMOVE_GATE', slotId });
       },
-    });
+    };
+
+    // Custom levels, generic auto-layout is the temporary fallback.
+    this.boardView = this.startingLevel.id === 'level_01_foundations'
+      ? new Level01FoundationsBoardView(boardOptions)
+      : new GameBoardView(boardOptions);
 
     this.setupHeaderAndTray();
     const title = document.getElementById('level-title');
-    if (title) title.textContent = this.startingLevel.title;
+    if (title) {
+      const index = mainLevels.findIndex((level) => level.id === this.startingLevel.id);
+      const levelNumber = index >= 0 ? index + 1 : 1;
+      title.innerHTML = `Level ${levelNumber} <span class="dim">/ 5</span>`;
+    }
     this.loadLevel(this.restoreLevel());
     if (this.timed) this.startTimer();
   }

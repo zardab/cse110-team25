@@ -41,7 +41,7 @@
   <main class="board-card">
     <div class="card-badges">
       <div class="badge level-badge" id="level-title"></div>
-      <div class="badge attempt-badge">Attempt 1</div>
+      <!-- <div class="badge attempt-badge">Attempt 1</div> --> <!--- Only for HARD mode -->
     </div>
     <div id="konva-container" class="konva-container"></div>
       <div id="game-over-overlay" class="game-over-overlay" hidden>
@@ -84,7 +84,7 @@
             id="difficulty-toggle"
             class="difficulty-toggle"
             type="button"
-            data-mode="HARD"
+            data-mode="EASY"
             aria-label="Toggle difficulty"
           >
             <span class="difficulty-toggle-thumb" aria-hidden="true"></span>
@@ -94,7 +94,6 @@
         </div>
       </nav>
 
-      <!-- TODO: replace hardcoded Level 5 / 12 with real level progress -->
       <div class="sidebar-footer">
         Level 5 <span class="dim">/ 12</span>
       </div>
