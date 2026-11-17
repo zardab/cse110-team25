@@ -5,6 +5,11 @@ import xor from './levels/level_02_xor.json';
 import nand from './levels/level_03_nand.json';
 import nor from './levels/level_04_nor.json';
 import xnor from './levels/level_05_xnor.json';
+import choices from './levels/level_06_choices.json';
+import tied from './levels/level_07_tied.json';
+import mirror from './levels/level_08_mirror.json';
+import shared from './levels/level_09_shared.json';
+import finale from './levels/level_10_finale.json';
 
 export const mainLevels: readonly LevelConfig[] =
-  [foundations, xor, nand, nor, xnor].map(loadLevel);
+  [foundations, xor, nand, nor, xnor, choices, tied, mirror, shared, finale].map(loadLevel);
