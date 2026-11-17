@@ -55,7 +55,7 @@ describe('createStore', () => {
       expect(state.inventory).toEqual(level.availableGatePalette);
     });
 
-    it('evaluates once up front in Easy mode so wires can render', () => {
+    it('evaluates once up front so wires can render', () => {
       const evaluate = mockEvaluate();
       const store = createStore(level, evaluate);
 
@@ -63,12 +63,12 @@ describe('createStore', () => {
       expect(store.getState().result).toBe(mockResult);
     });
 
-    it('does not evaluate up front in Hard mode', () => {
+    it('still evaluates up front when the level JSON says HARD', () => {
       const evaluate = mockEvaluate();
       const store = createStore(hardLevel, evaluate);
 
-      expect(evaluate).not.toHaveBeenCalled();
-      expect(store.getState().result).toBeNull();
+      expect(evaluate).toHaveBeenCalledTimes(1);
+      expect(store.getState().result).toBe(mockResult);
     });
 
     it('subtracts gates that are already on the board from the inventory', () => {
@@ -213,7 +213,7 @@ describe('createStore', () => {
       expect(store.getState().result).toBe(mockResult);
     });
 
-    it('Hard mode never evaluates on board changes and has no result to show', () => {
+    it('evaluates on board changes even when the level JSON says HARD', () => {
       const evaluate = mockEvaluate();
       const store = createStore(hardLevel, evaluate);
 
@@ -221,8 +221,9 @@ describe('createStore', () => {
       store.dispatch(remove('s_and'));
       store.dispatch(place('s_and', 'OR'));
 
-      expect(evaluate).not.toHaveBeenCalled();
-      expect(store.getState().result).toBeNull();
+      // createStore + three mutations
+      expect(evaluate).toHaveBeenCalledTimes(4);
+      expect(store.getState().result).toBe(mockResult);
     });
   });
 
@@ -400,13 +401,17 @@ describe('createStore', () => {
       expect(evaluate).not.toHaveBeenCalled();
     });
 
-    it('keeps Hard mode without a result', () => {
-      const store = createStore(hardLevel, mockEvaluate());
+    it('restores the previous result on undo for HARD JSON levels too', () => {
+      const evaluate = mockEvaluate();
+      const store = createStore(hardLevel, evaluate);
+      const initialResult = store.getState().result;
       store.dispatch(place('s_and', 'AND'));
-      store.dispatch(undo);
+      evaluate.mockClear();
 
+      store.dispatch(undo);
       expect(gateIn(store, 's_and')).toBe('NULL');
-      expect(store.getState().result).toBeNull();
+      expect(store.getState().result).toBe(initialResult);
+      expect(evaluate).not.toHaveBeenCalled();
     });
   });
 

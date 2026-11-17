@@ -82,13 +82,17 @@ export class GameBoardView {
     level.primaryOutputs.forEach((id, index) => {
       const end = { x: width - 134, y: rowY(index, level.primaryOutputs.length) };
       const signal = wireStates[id];
+      const target = level.targetOutputs[id];
       this.drawWire(outputSources.get(id)!, end, signal);
       const x = end.x + 24;
       const y = end.y;
-      const isHigh = signal === 1;
-      if (isHigh) this.layer.add(new Konva.Circle({ x, y, radius: 28, fill: '#FEF08A', opacity: 0.6 }));
-      this.layer.add(new Konva.Circle({ x, y, radius: 22, fill: isHigh ? '#FACC15' : '#E5E7EB' }));
-      this.layer.add(new Konva.Text({ x, y, text: '💡', fontSize: 24, offsetX: 12, offsetY: 12 }));
+      const met = signal === target;
+      const icon = target === 0 ? '💀' : '💡';
+      const active = met ? (target === 0 ? '#A1A1AA' : '#FACC15') : '#E5E7EB';
+      const glow = met ? (target === 0 ? '#D4D4D8' : '#FEF08A') : null;
+      if (glow) this.layer.add(new Konva.Circle({ x, y, radius: 28, fill: glow, opacity: 0.6 }));
+      this.layer.add(new Konva.Circle({ x, y, radius: 22, fill: active }));
+      this.layer.add(new Konva.Text({ x, y, text: icon, fontSize: 24, offsetX: 12, offsetY: 12 }));
     });
     for (const [id, point] of inputs) {
       const value = level.inputValues[id];

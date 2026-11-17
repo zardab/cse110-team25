@@ -1,5 +1,10 @@
 import { GameBoardView } from './components/GameBoardView';
+import { FixedLayoutBoardView, type BoardViewOptions } from './components/boards/FixedLayoutBoardView';
 import { Level01FoundationsBoardView } from './components/boards/Level01FoundationsBoardView';
+import { Level02XorBoardView } from './components/boards/Level02XorBoardView';
+import { Level03NandBoardView } from './components/boards/Level03NandBoardView';
+import { Level04NorBoardView } from './components/boards/Level04NorBoardView';
+import { Level05XnorBoardView } from './components/boards/Level05XnorBoardView';
 import { SideMenu } from './components/SideMenu';
 import { createStore, type GameState, type GameStore } from '../state/store';
 import type { GateType, LevelConfig } from '../types/circuit';
@@ -7,7 +12,15 @@ import { LevelValidationError, loadLevel } from '../content/levelLoader';
 import type { StorageAdapter } from '../persistence/storageAdapter';
 import { mainLevels } from '../content/levelCatalog';
 
-type BoardView = GameBoardView | Level01FoundationsBoardView;
+type BoardView = GameBoardView | FixedLayoutBoardView;
+
+const LEVEL_BOARD_VIEWS: Record<string, new (options: BoardViewOptions) => FixedLayoutBoardView> = {
+  level_01_foundations: Level01FoundationsBoardView,
+  level_02_xor: Level02XorBoardView,
+  level_03_nand: Level03NandBoardView,
+  level_04_nor: Level04NorBoardView,
+  level_05_xnor: Level05XnorBoardView,
+};
 
 const DEFAULT_MINIGAME_DURATION_SECONDS = 15;
 
@@ -17,6 +30,8 @@ interface LevelScreenOptions {
   storage?: StorageAdapter;
   timed?: boolean;
   durationSeconds?: number;
+  onNextLevel?: (level: LevelConfig) => void;
+  onPreviousLevel?: (level: LevelConfig) => void;
 }
 
 const LEVEL_1_CONFIG: LevelConfig = {
@@ -51,6 +66,8 @@ export class LevelScreen {
   private sideMenu!: SideMenu;
   private readonly startingLevel: LevelConfig;
   private readonly storage?: StorageAdapter;
+  private readonly onNextLevel?: (level: LevelConfig) => void;
+  private readonly onPreviousLevel?: (level: LevelConfig) => void;
   private readonly controls = new AbortController();
 
   // Minigame timer settings
@@ -65,6 +82,8 @@ export class LevelScreen {
   constructor(options: LevelScreenOptions = {}) {
     this.startingLevel = options.level ?? LEVEL_1_CONFIG;
     this.storage = options.storage;
+    this.onNextLevel = options.onNextLevel;
+    this.onPreviousLevel = options.onPreviousLevel;
     this.timed = options.timed ?? false;
     this.durationSeconds =
       options.durationSeconds ?? DEFAULT_MINIGAME_DURATION_SECONDS;
@@ -85,10 +104,8 @@ export class LevelScreen {
       },
     };
 
-    // Custom levels, generic auto-layout is the temporary fallback.
-    this.boardView = this.startingLevel.id === 'level_01_foundations'
-      ? new Level01FoundationsBoardView(boardOptions)
-      : new GameBoardView(boardOptions);
+    const Board = LEVEL_BOARD_VIEWS[this.startingLevel.id];
+    this.boardView = Board ? new Board(boardOptions) : new GameBoardView(boardOptions);
 
     this.setupHeaderAndTray();
     const title = document.getElementById('level-title');
@@ -147,6 +164,7 @@ export class LevelScreen {
   destroy(): void {
     this.stopTimer();
     this.hideGameOver();
+    this.hideLevelNavButtons();
     this.sideMenu.close();
     this.unsubscribe();
     this.controls.abort();
@@ -200,9 +218,41 @@ export class LevelScreen {
     if (overlay) overlay.hidden = true;
   }
 
+  private catalogIndex(): number {
+    return mainLevels.findIndex((level) => level.id === this.startingLevel.id);
+  }
+
+  private nextCatalogLevel(): LevelConfig | undefined {
+    const index = this.catalogIndex();
+    if (index < 0 || index >= mainLevels.length - 1) return undefined;
+    return mainLevels[index + 1];
+  }
+
+  private previousCatalogLevel(): LevelConfig | undefined {
+    const index = this.catalogIndex();
+    if (index <= 0) return undefined;
+    return mainLevels[index - 1];
+  }
+
+  private hideLevelNavButtons(): void {
+    const next = document.getElementById('next-level-btn');
+    const prev = document.getElementById('prev-level-btn');
+    if (next) next.hidden = true;
+    if (prev) prev.hidden = true;
+  }
+
+  private updateLevelNavButtons(solved: boolean): void {
+    const next = document.getElementById('next-level-btn');
+    if (next) next.hidden = !(solved && this.nextCatalogLevel() && this.onNextLevel);
+
+    const prev = document.getElementById('prev-level-btn');
+    if (prev) prev.hidden = !(this.previousCatalogLevel() && this.onPreviousLevel);
+  }
+
   private render(state: GameState) {
     this.boardView.render(state.level, state.result?.wireStates ?? {});
     this.renderTrayUI(state);
+    this.updateLevelNavButtons(state.result?.isSolved ?? false);
 
     if (this.timed && !this.gameEnded && state.result?.isSolved) {
       this.finishGame(true);
@@ -216,6 +266,16 @@ export class LevelScreen {
     const options = { signal: this.controls.signal };
     this.sideMenu = new SideMenu(this.controls.signal);
     document.getElementById('menu-btn')?.addEventListener('click', () => this.sideMenu.open(), options);
+
+    document.getElementById('next-level-btn')?.addEventListener('click', () => {
+      const next = this.nextCatalogLevel();
+      if (next) this.onNextLevel?.(next);
+    }, options);
+
+    document.getElementById('prev-level-btn')?.addEventListener('click', () => {
+      const previous = this.previousCatalogLevel();
+      if (previous) this.onPreviousLevel?.(previous);
+    }, options);
 
     const reset = () => {
       this.loadLevel(this.startingLevel);
