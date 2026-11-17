@@ -6,20 +6,17 @@ import { locateBreakerBoxView } from "./locateBreakerBoxView.ts";
 export class locateBreakerBoxController implements ScreenController {
   private view: locateBreakerBoxView;
   private active = false;
+  private levelId: string;
 
   constructor(
     stage: Konva.Stage,
-    width: number,
-    height: number,
+    private width: number,
+    private height: number,
     level: number,
-    onContinue: () => void,
+    private onContinue: (levelId: string) => void,
   ) {
-    this.view = new locateBreakerBoxView(
-      width,
-      height,
-      level,
-      onContinue,
-    );
+    this.levelId = `level${level}`;
+    this.view = this.createView(level);
 
     stage.on("mousemove.flashlight", () => {
       if (!this.active) return;
@@ -31,6 +28,38 @@ export class locateBreakerBoxController implements ScreenController {
         this.view.moveParallax(pos.x, pos.y);
       }
     });
+  }
+
+  private createView(level: number): locateBreakerBoxView {
+    return new locateBreakerBoxView(
+      this.width,
+      this.height,
+      level,
+      () => {
+        if (!this.active) return;
+
+        this.active = false;
+        this.onContinue(this.levelId);
+      },
+    );
+  }
+
+  // Change which level's flashlight scene is displayed.
+  public setLevel(level: number, levelId: string): void {
+    this.active = false;
+
+    const oldGroup = this.view.getGroup();
+    const parent = oldGroup.getParent();
+
+    oldGroup.destroy();
+
+    this.levelId = levelId;
+    this.view = this.createView(level);
+
+    if (parent) {
+      parent.add(this.view.getGroup());
+      this.view.hide();
+    }
   }
 
   public start(): void {

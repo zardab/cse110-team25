@@ -3,6 +3,7 @@ import type Konva from "konva";
 export type ScreenId =
   | { type: "menu" }
   | { type: "cutscene1" }
+  | { type: "levelSelector" }
   | { type: "locateBreakerBox" }
   | { type: "level1" }
   | { type: "minigame1" }
