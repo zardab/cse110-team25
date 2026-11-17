@@ -5,6 +5,7 @@ export type ScreenId =
   | { type: "cutscene1" }
   | { type: "levelSelector" }
   | { type: "locateBreakerBox" }
+  | { type: "gateGuess" }
   | { type: "level1" }
   | { type: "minigame1" }
   | { type: "minigame2" };

@@ -10,13 +10,15 @@ import { MainMenuController } from "./MainMenuController.ts";
 import { Cutscene1Controller } from "../Cutscenes/Cutscene1/Cutscene1Controller.ts";
 import { LevelSelectorController } from "./LevelSelectorController.ts";
 import { locateBreakerBoxController } from "./locateBreakerBoxController.ts";
+import { GateGuessController } from "../minigames/GateGuessController.ts";
 import { mainLevels } from "../content/levelCatalog";
 
 type KonvaScreenId =
   | "menu"
   | "cutscene1"
   | "levelSelector"
-  | "locateBreakerBox";
+  | "locateBreakerBox"
+  | "gateGuess";
 
 export class SceneController implements ScreenSwitcher {
   private stage: Konva.Stage;
@@ -63,9 +65,12 @@ export class SceneController implements ScreenSwitcher {
         height,
         mainLevels,
         (id) => this.startLevelCutscene(id),
+        () => this.showKonvaScreen("gateGuess"),
       ),
 
       locateBreakerBox: this.breakerController,
+
+      gateGuess: new GateGuessController(this, width, height),
     };
 
     for (const controller of Object.values(this.screens)) {
@@ -126,6 +131,10 @@ export class SceneController implements ScreenSwitcher {
 
       case "locateBreakerBox":
         this.showKonvaScreen("locateBreakerBox");
+        return;
+
+      case "gateGuess":
+        this.showKonvaScreen("gateGuess");
         return;
 
       case "level1":
