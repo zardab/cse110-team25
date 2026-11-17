@@ -65,7 +65,6 @@ export class SceneController implements ScreenSwitcher {
         height,
         mainLevels,
         (id) => this.startLevelCutscene(id),
-        () => this.showKonvaScreen("gateGuess"),
       ),
 
       locateBreakerBox: this.breakerController,

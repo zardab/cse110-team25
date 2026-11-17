@@ -11,14 +11,12 @@ export class LevelSelectorController implements ScreenController {
     height: number,
     levels: readonly LevelConfig[],
     onStartCutscene: (levelId: string) => void,
-    onMinigameClick: () => void,
   ) {
     this.view = new LevelSelectorView(
       width,
       height,
       levels,
       onStartCutscene,
-      onMinigameClick,
     );
   }
 

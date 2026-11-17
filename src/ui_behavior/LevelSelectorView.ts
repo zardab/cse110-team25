@@ -27,7 +27,6 @@ export class LevelSelectorView implements View {
     height: number,
     levels: readonly LevelConfig[],
     onStartCutscene: (levelId: string) => void,
-    onMinigameClick: () => void,
   ) {
     this.group.add(
       new Konva.Rect({
@@ -78,17 +77,6 @@ export class LevelSelectorView implements View {
         ),
       );
     }
-
-    // The minigame sits below the menu image, in the black margin.
-    const minigame: LevelButton = {
-      id: "gateGuess",
-      label: "Name That Gate",
-      x: 0.5,
-      y: Math.min(0.95, 1 - (BUTTON_STYLE.height / 2 + 8) / height),
-    };
-    this.group.add(
-      this.createButton(minigame, width, height, onMinigameClick),
-    );
   }
 
   private createButton(
