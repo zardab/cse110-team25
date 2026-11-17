@@ -1,0 +1,186 @@
+import Konva from 'konva';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { GateGuessController } from './GateGuessController';
+import { GUESS_GATES, MAX_LIVES, ROUND_SECONDS, fits, type GuessGate } from './gateGuess';
+import { GATE_GUESS_BEST_KEY } from './gateGuessRecord';
+import type { StorageLike } from '../persistence/storageAdapter';
+import type { ScreenSwitcher } from '../screenTypes';
+
+function memory(initial: Record<string, string> = {}): StorageLike & { data: Record<string, string> } {
+  const data = { ...initial };
+  return {
+    data,
+    getItem: (key) => (Object.hasOwn(data, key) ? data[key] : null),
+    setItem: (key, value) => { data[key] = value; },
+    removeItem: (key) => { delete data[key]; },
+  };
+}
+
+function setup(initial: Record<string, string> = {}) {
+  const switcher: ScreenSwitcher = { switchToScreen: vi.fn() };
+  const storage = memory(initial);
+  // A fixed sequence keeps the hidden gates and tests the same on every run.
+  let n = 0;
+  const rng = () => ((n++ * 0.37) % 1);
+  const controller = new GateGuessController(switcher, 960, 600, { rng, storage });
+  const layer = new Konva.Layer();
+  layer.add(controller.getView().getGroup());
+  controller.start();
+
+  const group = controller.getView().getGroup();
+  const find = (name: string) => group.findOne(`.${name}`) as Konva.Node;
+  const text = (name: string) => (find(name) as Konva.Text).text();
+  const click = (name: string) => find(name).fire('click');
+  const enabled = (name: string) => find(name).getAttr('enabled') as boolean;
+  const round = () => controller.getSession().round;
+  const wrongGate = (): GuessGate => GUESS_GATES.find((gate) => !fits(gate, round().clues))!;
+  const fittingGate = () =>
+    GUESS_GATES.find((gate) => gate !== round().answer && fits(gate, round().clues));
+  return { controller, switcher, storage, find, text, click, enabled, round, wrongGate, fittingGate };
+}
+
+describe('GateGuessController', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('starts with the gate hidden, one test and every gate button enabled', () => {
+    const { text, enabled, find, round } = setup();
+    expect(text('gate-box')).toBe('?');
+    expect(text('message')).toContain('Which gate is it?');
+    expect(text('lives')).toBe('♥'.repeat(MAX_LIVES));
+    expect(find('clue-row-0')).toBeTruthy();
+    expect(find('clue-row-1')).toBeUndefined();
+    expect(find('action-button')).toBeUndefined();
+    for (const gate of GUESS_GATES) expect(enabled(`gate-button-${gate}`)).toBe(true);
+    expect(round().clues).toHaveLength(1);
+  });
+
+  it('reveals the gate, offers the next circuit and saves the best streak on a correct guess', () => {
+    const { click, text, find, round, storage, enabled } = setup();
+    const answer = round().answer;
+    click(`gate-button-${answer}`);
+    expect(text('gate-box')).toBe(answer);
+    expect(text('message')).toContain(`Correct, it's ${answer}`);
+    expect(text('score')).toContain('STREAK 1');
+    expect(storage.data[GATE_GUESS_BEST_KEY]).toBe('1');
+    for (const gate of GUESS_GATES) expect(enabled(`gate-button-${gate}`)).toBe(false);
+
+    click('action-button');
+    expect(round().answer).not.toBe(answer);
+    expect(text('gate-box')).toBe('?');
+    expect(find('action-button')).toBeUndefined();
+  });
+
+  it('adds a test, shows it and costs no life when the guess fits so far', () => {
+    const s = setup();
+    // Any single test fits three gates, so there is always a wrong one that fits.
+    const gate = s.fittingGate()!;
+    s.click(`gate-button-${gate}`);
+    expect(s.text('message')).toContain(`${gate} fits so far`);
+    expect(s.text('lives')).toBe('♥'.repeat(MAX_LIVES));
+    expect(s.find('clue-row-1')).toBeTruthy();
+    expect(s.text('gate-box')).toBe('?');
+    expect(s.enabled(`gate-button-${gate}`)).toBe(false);
+  });
+
+  it('explains a wrong guess and takes a life', () => {
+    const s = setup();
+    const gate = s.wrongGate();
+    s.click(`gate-button-${gate}`);
+    expect(s.text('message')).toContain(`${gate} doesn't fit`);
+    expect(s.text('message')).toContain(`${MAX_LIVES - 1} lives left`);
+    expect(s.text('lives')).toBe('♥'.repeat(MAX_LIVES - 1) + '♡');
+  });
+
+  it('ends the run after the last life and starts over on Play Again', () => {
+    const s = setup({ [GATE_GUESS_BEST_KEY]: '4' });
+    const answer = s.round().answer;
+    for (let i = 0; i < MAX_LIVES; i += 1) {
+      // Only three gates contradict any single test, so a run of wrong guesses needs fresh ones.
+      const wrong = GUESS_GATES.find((gate) => !fits(gate, s.round().clues) && !s.round().guessed.includes(gate))!;
+      s.click(`gate-button-${wrong}`);
+    }
+    expect(s.text('message')).toContain(`It was ${answer}`);
+    expect(s.text('gate-box')).toBe(answer);
+    expect(s.text('score')).toContain('BEST 4');
+
+    s.click('action-button');
+    expect(s.controller.getSession()).toMatchObject({ lives: MAX_LIVES, streak: 0, status: 'playing' });
+    expect(s.text('gate-box')).toBe('?');
+  });
+
+  it('shows the clicked test on the circuit', () => {
+    const s = setup();
+    s.click(`gate-button-${s.fittingGate()!}`);
+    const [first] = s.round().clues;
+    s.click('clue-row-0');
+    const card = s.find('gate-box').getParent()!;
+    const labels = card.find('Text').map((node) => (node as Konva.Text).text());
+    expect(labels).toContain(`A = ${first.a}`);
+    expect(labels).toContain(`B = ${first.b}`);
+    expect(labels).toContain(`OUT = ${first.out}`);
+    expect(labels).toContain('SHOWING TEST 1 OF 2');
+  });
+
+  it('goes back to the main menu', () => {
+    const { click, switcher } = setup();
+    click('back-button');
+    expect(switcher.switchToScreen).toHaveBeenCalledWith({ type: 'menu' });
+  });
+
+  it('counts down from 15 seconds and ends the run when time runs out', () => {
+    const s = setup();
+    expect(s.text('timer')).toBe(`⏱ ${ROUND_SECONDS}s`);
+    vi.advanceTimersByTime(4000);
+    expect(s.text('timer')).toBe(`⏱ ${ROUND_SECONDS - 4}s`);
+
+    const answer = s.round().answer;
+    vi.advanceTimersByTime((ROUND_SECONDS - 4) * 1000);
+    expect(s.controller.getSession().status).toBe('lost');
+    expect(s.text('message')).toContain(`Time's up! It was ${answer}`);
+    expect(s.text('gate-box')).toBe(answer);
+    expect(s.text('timer')).toBe('⏱ 0s');
+    for (const gate of GUESS_GATES) expect(s.enabled(`gate-button-${gate}`)).toBe(false);
+
+    s.click('action-button');
+    expect(s.controller.getSession().status).toBe('playing');
+    expect(s.text('timer')).toBe(`⏱ ${ROUND_SECONDS}s`);
+  });
+
+  it('resets the timer for the next circuit after a correct guess, and pauses until then', () => {
+    const s = setup();
+    vi.advanceTimersByTime(10_000);
+    s.click(`gate-button-${s.round().answer}`);
+    // Waiting on the Next button never times out.
+    vi.advanceTimersByTime(60_000);
+    expect(s.controller.getSession().status).toBe('won');
+    expect(s.text('timer')).toBe(`⏱ ${ROUND_SECONDS - 10}s`);
+
+    s.click('action-button');
+    expect(s.text('timer')).toBe(`⏱ ${ROUND_SECONDS}s`);
+    vi.advanceTimersByTime((ROUND_SECONDS - 1) * 1000);
+    expect(s.controller.getSession().status).toBe('playing');
+  });
+
+  it('keeps counting through guesses that fit so far or are wrong', () => {
+    const s = setup();
+    vi.advanceTimersByTime(3000);
+    s.click(`gate-button-${s.fittingGate()!}`);
+    s.click(`gate-button-${s.wrongGate()}`);
+    expect(s.text('timer')).toBe(`⏱ ${ROUND_SECONDS - 3}s`);
+    vi.advanceTimersByTime(2000);
+    expect(s.text('timer')).toBe(`⏱ ${ROUND_SECONDS - 5}s`);
+  });
+
+  it('stops the clock when the screen is left', () => {
+    const s = setup();
+    s.controller.stop();
+    vi.advanceTimersByTime(ROUND_SECONDS * 2000);
+    expect(s.controller.getSession().status).toBe('playing');
+  });
+});
