@@ -17,6 +17,15 @@ vi.mock('./components/GameBoardView', () => ({
     destroy() {}
   },
 }));
+vi.mock('./components/boards/Level01FoundationsBoardView', () => ({
+  Level01FoundationsBoardView: class {
+    constructor(opts: typeof options) {
+      options = opts;
+    }
+    render = render;
+    destroy() {}
+  },
+}));
 
 function lastRender() {
   const [level, wireStates] = render.mock.calls.at(-1)!;
@@ -40,7 +49,7 @@ describe('Main game level integration', () => {
       <button id="menu-btn"></button>
       <div id="game-sidebar" hidden>
         <button id="sidebar-close-btn"></button>
-        <button id="difficulty-toggle" data-mode="HARD"></button>
+        <button id="difficulty-toggle" data-mode="EASY"></button>
       </div>
     `;
   });
@@ -61,7 +70,7 @@ describe('Main game level integration', () => {
     menu.click();
     expect(sidebar.hidden).toBe(false);
     toggle.click();
-    expect(toggle.dataset.mode).toBe('EASY');
+    expect(toggle.dataset.mode).toBe('HARD');
     document.getElementById('sidebar-close-btn')!.click();
     expect(sidebar.hidden).toBe(true);
   });
@@ -72,7 +81,7 @@ describe('Main game level integration', () => {
     screen.destroy();
 
     screen = new LevelScreen({ level: xor, storage });
-    expect(document.getElementById('level-title')!.textContent).toBe(xor.title);
+    expect(document.getElementById('level-title')!.textContent).toBe('Level 2 / 5');
     expect(render.mock.lastCall![0].slots.slot_xor.assignedGate).toBe('NULL');
     screen.destroy();
 
@@ -184,7 +193,7 @@ describe('LevelScreen Logic', () => {
       <div id="game-sidebar" hidden>
         <div id="sidebar-backdrop"></div>
         <button id="sidebar-close-btn"></button>
-        <button id="difficulty-toggle" data-mode="HARD"></button>
+        <button id="difficulty-toggle" data-mode="EASY"></button>
       </div>
       
       <button id="undo-btn"></button>
@@ -287,7 +296,7 @@ describe('Timed minigame', () => {
       <div id="game-sidebar" hidden>
         <div id="sidebar-backdrop"></div>
         <button id="sidebar-close-btn"></button>
-        <button id="difficulty-toggle" data-mode="HARD"></button>
+        <button id="difficulty-toggle" data-mode="EASY"></button>
       </div>
       
       <button id="undo-btn"></button>
