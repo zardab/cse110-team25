@@ -28,7 +28,6 @@ const LEVEL_1_CONFIG: LevelConfig = {
   slots: {
     slot_1: {
       id: 'slot_1',
-      allowedGates: ['OR', 'AND'],
       assignedGate: 'NULL',
       inputs: [
         { sourceType: 'PRIMARY_INPUT', sourceId: 'in_A' },

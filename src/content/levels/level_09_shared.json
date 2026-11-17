@@ -57,9 +57,9 @@
     "slot_q": {
       "id": "slot_q",
       "allowedGates": [
-        "AND",
         "OR",
-        "XOR"
+        "XOR",
+        "NAND"
       ],
       "inputs": [
         {
@@ -76,11 +76,6 @@
     },
     "slot_r": {
       "id": "slot_r",
-      "allowedGates": [
-        "AND",
-        "NOR",
-        "XNOR"
-      ],
       "inputs": [
         {
           "sourceType": "PRIMARY_INPUT",
@@ -96,11 +91,6 @@
     },
     "slot_s": {
       "id": "slot_s",
-      "allowedGates": [
-        "AND",
-        "NAND",
-        "XNOR"
-      ],
       "inputs": [
         {
           "sourceType": "SLOT_OUTPUT",
@@ -116,10 +106,6 @@
     },
     "slot_t": {
       "id": "slot_t",
-      "allowedGates": [
-        "NOR",
-        "NAND"
-      ],
       "inputs": [
         {
           "sourceType": "SLOT_OUTPUT",
@@ -135,10 +121,6 @@
     },
     "slot_output": {
       "id": "slot_output",
-      "allowedGates": [
-        "AND",
-        "NAND"
-      ],
       "inputs": [
         {
           "sourceType": "SLOT_OUTPUT",

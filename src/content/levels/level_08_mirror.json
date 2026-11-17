@@ -32,9 +32,6 @@
   "slots": {
     "slot_xor_ab": {
       "id": "slot_xor_ab",
-      "allowedGates": [
-        "XOR"
-      ],
       "inputs": [
         {
           "sourceType": "PRIMARY_INPUT",
@@ -50,9 +47,6 @@
     },
     "slot_xor_cd": {
       "id": "slot_xor_cd",
-      "allowedGates": [
-        "XOR"
-      ],
       "inputs": [
         {
           "sourceType": "PRIMARY_INPUT",
@@ -69,7 +63,8 @@
     "slot_compare": {
       "id": "slot_compare",
       "allowedGates": [
-        "XOR",
+        "AND",
+        "NOR",
         "XNOR"
       ],
       "inputs": [
@@ -87,9 +82,6 @@
     },
     "slot_not": {
       "id": "slot_not",
-      "allowedGates": [
-        "NOT"
-      ],
       "inputs": [
         {
           "sourceType": "PRIMARY_INPUT",
@@ -102,8 +94,9 @@
     "slot_gate": {
       "id": "slot_gate",
       "allowedGates": [
-        "OR",
-        "NAND"
+        "AND",
+        "NAND",
+        "NOR"
       ],
       "inputs": [
         {
@@ -121,9 +114,9 @@
     "slot_output": {
       "id": "slot_output",
       "allowedGates": [
+        "AND",
         "OR",
-        "NOR",
-        "XOR"
+        "NAND"
       ],
       "inputs": [
         {
@@ -149,7 +142,7 @@
     },
     {
       "triggerSlotId": "slot_gate",
-      "message": "OR and NAND both work here, but only one of them is left for the final slot."
+      "message": "Only one of these gates outputs 1 here. Check what that leaves for the final slot."
     }
   ],
   "targetOutputs": {

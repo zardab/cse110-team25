@@ -11,8 +11,23 @@
     "NOR": 1,
     "XNOR": 1
   },
-  "primaryInputs": ["in_A", "in_B", "in_C", "in_D", "in_E", "in_F", "in_G", "in_H"],
-  "primaryOutputs": ["out_V", "out_W", "out_X", "out_Z", "out_Y"],
+  "primaryInputs": [
+    "in_A",
+    "in_B",
+    "in_C",
+    "in_D",
+    "in_E",
+    "in_F",
+    "in_G",
+    "in_H"
+  ],
+  "primaryOutputs": [
+    "out_V",
+    "out_W",
+    "out_X",
+    "out_Z",
+    "out_Y"
+  ],
   "inputValues": {
     "in_A": 1,
     "in_B": 1,
@@ -26,96 +41,174 @@
   "slots": {
     "slot_and": {
       "id": "slot_and",
-      "allowedGates": ["AND"],
       "inputs": [
-        {"sourceType": "PRIMARY_INPUT", "sourceId": "in_A"},
-        {"sourceType": "PRIMARY_INPUT", "sourceId": "in_B"}
+        {
+          "sourceType": "PRIMARY_INPUT",
+          "sourceId": "in_A"
+        },
+        {
+          "sourceType": "PRIMARY_INPUT",
+          "sourceId": "in_B"
+        }
       ],
       "outputWireId": "out_V",
       "assignedGate": "AND"
     },
     "slot_or": {
       "id": "slot_or",
-      "allowedGates": ["OR"],
+      "allowedGates": [
+        "OR",
+        "XOR",
+        "XNOR"
+      ],
       "inputs": [
-        {"sourceType": "PRIMARY_INPUT", "sourceId": "in_C"},
-        {"sourceType": "PRIMARY_INPUT", "sourceId": "in_D"}
+        {
+          "sourceType": "PRIMARY_INPUT",
+          "sourceId": "in_C"
+        },
+        {
+          "sourceType": "PRIMARY_INPUT",
+          "sourceId": "in_D"
+        }
       ],
       "outputWireId": "out_W",
       "assignedGate": "OR"
     },
     "slot_xor": {
       "id": "slot_xor",
-      "allowedGates": ["XOR"],
       "inputs": [
-        {"sourceType": "PRIMARY_INPUT", "sourceId": "in_E"},
-        {"sourceType": "PRIMARY_INPUT", "sourceId": "in_F"}
+        {
+          "sourceType": "PRIMARY_INPUT",
+          "sourceId": "in_E"
+        },
+        {
+          "sourceType": "PRIMARY_INPUT",
+          "sourceId": "in_F"
+        }
       ],
       "outputWireId": "wire_xor",
       "assignedGate": "XOR"
     },
     "slot_nor": {
       "id": "slot_nor",
-      "allowedGates": ["NOR"],
       "inputs": [
-        {"sourceType": "PRIMARY_INPUT", "sourceId": "in_F"},
-        {"sourceType": "PRIMARY_INPUT", "sourceId": "in_G"}
+        {
+          "sourceType": "PRIMARY_INPUT",
+          "sourceId": "in_F"
+        },
+        {
+          "sourceType": "PRIMARY_INPUT",
+          "sourceId": "in_G"
+        }
       ],
       "outputWireId": "out_X",
       "assignedGate": "NOR"
     },
     "slot_nand": {
       "id": "slot_nand",
-      "allowedGates": ["NAND"],
+      "allowedGates": [
+        "NAND",
+        "NOR",
+        "XNOR"
+      ],
       "inputs": [
-        {"sourceType": "SLOT_OUTPUT", "sourceId": "slot_and"},
-        {"sourceType": "SLOT_OUTPUT", "sourceId": "slot_nor"}
+        {
+          "sourceType": "SLOT_OUTPUT",
+          "sourceId": "slot_and"
+        },
+        {
+          "sourceType": "SLOT_OUTPUT",
+          "sourceId": "slot_nor"
+        }
       ],
       "outputWireId": "wire_nand",
       "assignedGate": "NULL"
     },
     "slot_not": {
       "id": "slot_not",
-      "allowedGates": ["NOT"],
-      "inputs": [{"sourceType": "PRIMARY_INPUT", "sourceId": "in_C"}],
+      "inputs": [
+        {
+          "sourceType": "PRIMARY_INPUT",
+          "sourceId": "in_C"
+        }
+      ],
       "outputWireId": "wire_not_c",
       "assignedGate": "NULL"
     },
     "slot_xnor": {
       "id": "slot_xnor",
-      "allowedGates": ["XNOR"],
+      "allowedGates": [
+        "AND",
+        "OR",
+        "XNOR"
+      ],
       "inputs": [
-        {"sourceType": "SLOT_OUTPUT", "sourceId": "slot_xor"},
-        {"sourceType": "SLOT_OUTPUT", "sourceId": "slot_not"}
+        {
+          "sourceType": "SLOT_OUTPUT",
+          "sourceId": "slot_xor"
+        },
+        {
+          "sourceType": "SLOT_OUTPUT",
+          "sourceId": "slot_not"
+        }
       ],
       "outputWireId": "out_Z",
       "assignedGate": "NULL"
     },
     "slot_or_final": {
       "id": "slot_or_final",
-      "allowedGates": ["OR"],
+      "allowedGates": [
+        "OR",
+        "NAND",
+        "NOR"
+      ],
       "inputs": [
-        {"sourceType": "SLOT_OUTPUT", "sourceId": "slot_nand"},
-        {"sourceType": "SLOT_OUTPUT", "sourceId": "slot_xnor"}
+        {
+          "sourceType": "SLOT_OUTPUT",
+          "sourceId": "slot_nand"
+        },
+        {
+          "sourceType": "SLOT_OUTPUT",
+          "sourceId": "slot_xnor"
+        }
       ],
       "outputWireId": "wire_or_final",
       "assignedGate": "NULL"
     },
     "slot_output": {
       "id": "slot_output",
-      "allowedGates": ["AND"],
       "inputs": [
-        {"sourceType": "SLOT_OUTPUT", "sourceId": "slot_or_final"},
-        {"sourceType": "PRIMARY_INPUT", "sourceId": "in_H"}
+        {
+          "sourceType": "SLOT_OUTPUT",
+          "sourceId": "slot_or_final"
+        },
+        {
+          "sourceType": "PRIMARY_INPUT",
+          "sourceId": "in_H"
+        }
       ],
       "outputWireId": "out_Y",
       "assignedGate": "NULL"
     }
   },
   "hints": [
-    {"message": "XNOR outputs 1 when its inputs match."},
-    {"triggerSlotId": "slot_xnor", "message": "Trace the XOR and NOT branches before deciding whether they match."},
-    {"triggerSlotId": "slot_output", "message": "The final AND gate requires both the circuit result and the last input."}
+    {
+      "message": "XNOR outputs 1 when its inputs match."
+    },
+    {
+      "triggerSlotId": "slot_xnor",
+      "message": "Trace the XOR and NOT branches before deciding whether they match."
+    },
+    {
+      "triggerSlotId": "slot_output",
+      "message": "The final AND gate requires both the circuit result and the last input."
+    }
   ],
-  "targetOutputs": {"out_V": 1, "out_W": 1, "out_X": 1, "out_Z": 1, "out_Y": 1}
+  "targetOutputs": {
+    "out_V": 1,
+    "out_W": 1,
+    "out_X": 1,
+    "out_Z": 1,
+    "out_Y": 1
+  }
 }

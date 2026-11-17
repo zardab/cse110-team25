@@ -41,7 +41,9 @@
     "slot_and_ab": {
       "id": "slot_and_ab",
       "allowedGates": [
-        "AND"
+        "AND",
+        "OR",
+        "NOR"
       ],
       "inputs": [
         {
@@ -58,9 +60,6 @@
     },
     "slot_xor_cd": {
       "id": "slot_xor_cd",
-      "allowedGates": [
-        "XOR"
-      ],
       "inputs": [
         {
           "sourceType": "PRIMARY_INPUT",
@@ -76,9 +75,6 @@
     },
     "slot_or_ef": {
       "id": "slot_or_ef",
-      "allowedGates": [
-        "OR"
-      ],
       "inputs": [
         {
           "sourceType": "PRIMARY_INPUT",
@@ -94,9 +90,6 @@
     },
     "slot_not_g": {
       "id": "slot_not_g",
-      "allowedGates": [
-        "NOT"
-      ],
       "inputs": [
         {
           "sourceType": "PRIMARY_INPUT",
@@ -109,9 +102,9 @@
     "slot_m1": {
       "id": "slot_m1",
       "allowedGates": [
-        "OR",
-        "NOR",
-        "XNOR"
+        "AND",
+        "NAND",
+        "NOR"
       ],
       "inputs": [
         {
@@ -128,10 +121,6 @@
     },
     "slot_m2": {
       "id": "slot_m2",
-      "allowedGates": [
-        "NAND",
-        "XOR"
-      ],
       "inputs": [
         {
           "sourceType": "SLOT_OUTPUT",
@@ -149,8 +138,8 @@
       "id": "slot_m3",
       "allowedGates": [
         "AND",
-        "XNOR",
-        "NAND"
+        "NAND",
+        "NOR"
       ],
       "inputs": [
         {
@@ -167,11 +156,6 @@
     },
     "slot_output": {
       "id": "slot_output",
-      "allowedGates": [
-        "OR",
-        "XNOR",
-        "NOR"
-      ],
       "inputs": [
         {
           "sourceType": "SLOT_OUTPUT",
@@ -196,7 +180,7 @@
     },
     {
       "triggerSlotId": "slot_m3",
-      "message": "Its inputs differ. Which allowed gate turns on for 1 and 0?"
+      "message": "Its inputs differ. Which gate turns on for 1 and 0?"
     },
     {
       "triggerSlotId": "slot_output",
