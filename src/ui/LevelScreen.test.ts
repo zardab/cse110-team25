@@ -49,7 +49,7 @@ describe('Main game level integration', () => {
       <button id="menu-btn"></button>
       <div id="game-sidebar" hidden>
         <button id="sidebar-close-btn"></button>
-        <button id="difficulty-toggle" data-mode="HARD"></button>
+        <button id="difficulty-toggle" data-mode="EASY"></button>
       </div>
     `;
   });
@@ -70,7 +70,7 @@ describe('Main game level integration', () => {
     menu.click();
     expect(sidebar.hidden).toBe(false);
     toggle.click();
-    expect(toggle.dataset.mode).toBe('EASY');
+    expect(toggle.dataset.mode).toBe('HARD');
     document.getElementById('sidebar-close-btn')!.click();
     expect(sidebar.hidden).toBe(true);
   });
@@ -193,7 +193,7 @@ describe('LevelScreen Logic', () => {
       <div id="game-sidebar" hidden>
         <div id="sidebar-backdrop"></div>
         <button id="sidebar-close-btn"></button>
-        <button id="difficulty-toggle" data-mode="HARD"></button>
+        <button id="difficulty-toggle" data-mode="EASY"></button>
       </div>
       
       <button id="undo-btn"></button>
@@ -296,7 +296,7 @@ describe('Timed minigame', () => {
       <div id="game-sidebar" hidden>
         <div id="sidebar-backdrop"></div>
         <button id="sidebar-close-btn"></button>
-        <button id="difficulty-toggle" data-mode="HARD"></button>
+        <button id="difficulty-toggle" data-mode="EASY"></button>
       </div>
       
       <button id="undo-btn"></button>

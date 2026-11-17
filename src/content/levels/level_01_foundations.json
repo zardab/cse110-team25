@@ -24,7 +24,6 @@
     },
     "slot_and": {
       "id": "slot_and",
-      "allowedGates": ["AND"],
       "inputs": [
         {"sourceType": "SLOT_OUTPUT", "sourceId": "slot_not"},
         {"sourceType": "PRIMARY_INPUT", "sourceId": "in_B"}
@@ -34,7 +33,6 @@
     },
     "slot_or": {
       "id": "slot_or",
-      "allowedGates": ["OR"],
       "inputs": [
         {"sourceType": "SLOT_OUTPUT", "sourceId": "slot_and"},
         {"sourceType": "PRIMARY_INPUT", "sourceId": "in_C"}
