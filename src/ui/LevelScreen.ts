@@ -32,6 +32,7 @@ interface LevelScreenOptions {
   durationSeconds?: number;
   onNextLevel?: (level: LevelConfig) => void;
   onPreviousLevel?: (level: LevelConfig) => void;
+  onMainMenu?: () => void;
 }
 
 const LEVEL_1_CONFIG: LevelConfig = {
@@ -68,6 +69,7 @@ export class LevelScreen {
   private readonly storage?: StorageAdapter;
   private readonly onNextLevel?: (level: LevelConfig) => void;
   private readonly onPreviousLevel?: (level: LevelConfig) => void;
+  private readonly onMainMenu?: () => void;
   private readonly controls = new AbortController();
 
   // Minigame timer settings
@@ -84,6 +86,7 @@ export class LevelScreen {
     this.storage = options.storage;
     this.onNextLevel = options.onNextLevel;
     this.onPreviousLevel = options.onPreviousLevel;
+    this.onMainMenu = options.onMainMenu;
     this.timed = options.timed ?? false;
     this.durationSeconds =
       options.durationSeconds ?? DEFAULT_MINIGAME_DURATION_SECONDS;
@@ -266,6 +269,7 @@ export class LevelScreen {
     const options = { signal: this.controls.signal };
     this.sideMenu = new SideMenu(this.controls.signal);
     document.getElementById('menu-btn')?.addEventListener('click', () => this.sideMenu.open(), options);
+    document.getElementById('main-menu-btn')?.addEventListener('click', () => this.onMainMenu?.(), options);
 
     document.getElementById('next-level-btn')?.addEventListener('click', () => {
       const next = this.nextCatalogLevel();
