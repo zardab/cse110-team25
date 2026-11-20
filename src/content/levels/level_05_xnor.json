@@ -56,11 +56,6 @@
     },
     "slot_or": {
       "id": "slot_or",
-      "allowedGates": [
-        "OR",
-        "XOR",
-        "XNOR"
-      ],
       "inputs": [
         {
           "sourceType": "PRIMARY_INPUT",
@@ -106,11 +101,6 @@
     },
     "slot_nand": {
       "id": "slot_nand",
-      "allowedGates": [
-        "NAND",
-        "NOR",
-        "XNOR"
-      ],
       "inputs": [
         {
           "sourceType": "SLOT_OUTPUT",
@@ -137,11 +127,6 @@
     },
     "slot_xnor": {
       "id": "slot_xnor",
-      "allowedGates": [
-        "AND",
-        "OR",
-        "XNOR"
-      ],
       "inputs": [
         {
           "sourceType": "SLOT_OUTPUT",
@@ -157,11 +142,6 @@
     },
     "slot_or_final": {
       "id": "slot_or_final",
-      "allowedGates": [
-        "OR",
-        "NAND",
-        "NOR"
-      ],
       "inputs": [
         {
           "sourceType": "SLOT_OUTPUT",
