@@ -21,7 +21,17 @@ window.addEventListener("DOMContentLoaded", () => {
       storage,
       onNextLevel: showLevel,
       onPreviousLevel: showLevel,
+      onMainMenu: showMainMenu,
     });
+  };
+
+  // Leaves the level and returns to the start screen
+  const showMainMenu = () => {
+    activeLevel?.destroy();
+    activeLevel = undefined;
+    appContainer.style.display = "none";
+    introContainer.style.display = "";
+    scene.switchToScreen({ type: "menu" });
   };
 
   // Opens a level by ID

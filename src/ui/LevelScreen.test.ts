@@ -4,6 +4,7 @@ import { LevelScreen } from './LevelScreen';
 import { mainLevels } from '../content/levelCatalog';
 import { loadLevel } from '../content/levelLoader';
 import { StorageAdapter } from '../persistence/storageAdapter';
+import indexHtml from '../../index.html?raw';
 
 // jsdom has no canvas, so replace the Konva board with a recorder.
 const render = vi.fn();
@@ -400,5 +401,77 @@ describe('Timed minigame', () => {
     expect(document.getElementById('timer-display')!.textContent).toBe('15s');
     expect(document.getElementById('game-over-overlay')!.hidden).toBe(true);
     expect(lastRender().gate).toBe('NULL');
+  });
+});
+
+describe('Main Menu button markup', () => {
+  it('is in the game sidebar of index.html in place of Mini-Games', () => {
+    const page = new DOMParser().parseFromString(indexHtml, 'text/html');
+    const button = page.querySelector('#game-sidebar #main-menu-btn');
+    expect(button?.textContent?.trim()).toBe('Main Menu');
+    expect(page.querySelector('#game-sidebar')?.textContent).not.toContain('Mini-Games');
+  });
+});
+
+describe('Main Menu button', () => {
+  const [foundations, xor] = mainLevels;
+  let screen: LevelScreen;
+  let storage: StorageAdapter;
+
+  beforeEach(() => {
+    localStorage.clear();
+    storage = new StorageAdapter();
+    document.body.innerHTML = `
+      <div id="konva-container"></div>
+      <div id="palette-grid"></div>
+      <button id="reset-btn"></button>
+      <button id="undo-btn"></button>
+      <button id="menu-btn"></button>
+      <div id="game-sidebar" hidden>
+        <button id="sidebar-close-btn"></button>
+        <button id="main-menu-btn"></button>
+        <button id="difficulty-toggle" data-mode="EASY"></button>
+      </div>
+    `;
+  });
+
+  afterEach(() => screen.destroy());
+
+  it('calls onMainMenu once per click', () => {
+    const onMainMenu = vi.fn();
+    screen = new LevelScreen({ level: foundations, storage, onMainMenu });
+    document.getElementById('menu-btn')!.click();
+    document.getElementById('main-menu-btn')!.click();
+    expect(onMainMenu).toHaveBeenCalledTimes(1);
+  });
+
+  it('does nothing when no onMainMenu callback is given', () => {
+    screen = new LevelScreen({ level: foundations, storage });
+    expect(() => document.getElementById('main-menu-btn')!.click()).not.toThrow();
+  });
+
+  it('stops calling the old callback once the level is destroyed', () => {
+    const first = vi.fn();
+    const second = vi.fn();
+    screen = new LevelScreen({ level: foundations, storage, onMainMenu: first });
+    screen.destroy();
+
+    screen = new LevelScreen({ level: xor, storage, onMainMenu: second });
+    document.getElementById('main-menu-btn')!.click();
+    expect(first).not.toHaveBeenCalled();
+    expect(second).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps board progress when the player leaves for the main menu', () => {
+    screen = new LevelScreen({
+      level: foundations,
+      storage,
+      onMainMenu: () => screen.destroy(),
+    });
+    options.onPlaceGate('slot_and', 'AND');
+    document.getElementById('main-menu-btn')!.click();
+
+    screen = new LevelScreen({ level: foundations, storage: new StorageAdapter() });
+    expect(render.mock.lastCall![0].slots.slot_and.assignedGate).toBe('AND');
   });
 });
