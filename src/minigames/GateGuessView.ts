@@ -125,11 +125,11 @@ export class GateGuessView implements View {
     }));
     const hearts = '♥'.repeat(model.lives) + '♡'.repeat(Math.max(0, MAX_LIVES - model.lives));
     this.board.add(new Konva.Text({
-      name: 'lives', x: BOARD.width - 260, y: 0, width: 260, align: 'right',
-      text: hearts, fontSize: 24, fill: COLOR.heart,
+      name: 'lives', x: BOARD.width - 260, y: -4, width: 260, align: 'right',
+      text: hearts, fontSize: 40, fill: COLOR.heart, letterSpacing: 2,
     }));
     this.board.add(new Konva.Text({
-      name: 'score', x: BOARD.width - 260, y: 28, width: 260, align: 'right', fontFamily: FONT,
+      name: 'score', x: BOARD.width - 260, y: 42, width: 260, align: 'right', fontFamily: FONT,
       text: `STREAK ${model.streak}   BEST ${model.best}`, fontSize: 14, fill: COLOR.dim,
     }));
 
