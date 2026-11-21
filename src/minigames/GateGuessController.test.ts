@@ -133,6 +133,58 @@ describe('GateGuessController', () => {
     expect(switcher.switchToScreen).toHaveBeenCalledWith({ type: 'menu' });
   });
 
+  describe('back button hit area', () => {
+    // `fire('click')` skips Konva's hit detection, so these tests put the view on a real
+    // stage and check what is actually under the pointer. Text drawn over the button
+    // (like the full-width title) used to swallow clicks below the button's top edge.
+    function onStage() {
+      const s = setup();
+      const container = document.createElement('div');
+      document.body.appendChild(container);
+      const stage = new Konva.Stage({ container, width: 960, height: 600 });
+      stage.add(s.find('back-button').getLayer()!);
+      s.controller.getView().show();
+      // Layers normally redraw on the next animation frame, which fake timers hold back.
+      stage.draw();
+      const back = s.find('back-button') as Konva.Group;
+      const rect = back.getClientRect();
+      const destroy = () => { stage.destroy(); container.remove(); };
+      return { ...s, stage, back, rect, destroy };
+    }
+
+    /** Points spread across the button, kept 2px inside its edges so the stroke can't decide them. */
+    function pointsAcross(rect: { x: number; y: number; width: number; height: number }) {
+      const points: { x: number; y: number }[] = [];
+      for (const fx of [0, 0.25, 0.5, 0.75, 1]) {
+        for (const fy of [0, 0.25, 0.5, 0.75, 1]) {
+          points.push({ x: rect.x + 2 + (rect.width - 4) * fx, y: rect.y + 2 + (rect.height - 4) * fy });
+        }
+      }
+      return points;
+    }
+
+    it('has the back button on top everywhere across it', () => {
+      const { stage, back, rect, destroy } = onStage();
+      const missed = pointsAcross(rect).filter((point) => {
+        const hit = stage.getIntersection(point);
+        return !hit || !back.isAncestorOf(hit);
+      });
+      destroy();
+      expect(missed).toEqual([]);
+    });
+
+    it('goes back to the main menu when the bottom of the button is clicked', () => {
+      const { stage, rect, switcher, destroy } = onStage();
+      const point = { x: rect.x + rect.width / 2, y: rect.y + rect.height - 4 };
+      // Konva turns mousedown + mouseup on the same shape into the `click` the button listens for.
+      const init = { clientX: point.x, clientY: point.y, bubbles: true };
+      stage.content.dispatchEvent(new MouseEvent('mousedown', init));
+      stage.content.dispatchEvent(new MouseEvent('mouseup', init));
+      destroy();
+      expect(switcher.switchToScreen).toHaveBeenCalledWith({ type: 'menu' });
+    });
+  });
+
   it('counts down from 15 seconds and ends the run when time runs out', () => {
     const s = setup();
     expect(s.text('timer')).toBe(`⏱ ${ROUND_SECONDS}s`);
