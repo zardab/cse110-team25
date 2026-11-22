@@ -1,6 +1,6 @@
 import Konva from 'konva';
 import type { View } from '../screenTypes';
-import { GUESS_GATES, MAX_LIVES, ROUND_SECONDS, type Clue, type GuessGate } from './gateGuess';
+import { GUESS_GATES, MAX_LIVES, ROUND_SECONDS, outputOf, type Bit, type Clue, type GuessGate } from './gateGuess';
 
 export type MessageTone = 'info' | 'hint' | 'good' | 'bad';
 
@@ -28,7 +28,29 @@ export interface GateGuessHandlers {
   readonly onSelectClue: (index: number) => void;
   readonly onAction: () => void;
   readonly onBack: () => void;
+  readonly onStart: () => void;
 }
+
+/** What the How to Play screen shows before a run starts. */
+export interface GateGuessIntroModel {
+  readonly best: number;
+}
+
+/** The How to Play steps, in order. Each is a heading and the text under it. */
+const INTRO_STEPS: readonly (readonly [string, string])[] = [
+  ['A gate is hidden in the box.',
+    'It has two inputs, A and B. Its output (OUT) lights the bulb when it is 1 and leaves it off when it is 0.'],
+  ['Read the test.',
+    'Each circuit starts with one test: the inputs A and B and the output the hidden gate gave. Use the cheat sheet to see which gates match.'],
+  ['Click a gate to guess.',
+    `✔ Correct: the gate is revealed and your streak goes up.\n` +
+    `➜ Fits so far: your guess matches every test but is not the answer. No penalty, you get a new test.\n` +
+    `✘ Wrong: your guess breaks a test you can already see. You lose a life.`],
+  ['Beat the clock.',
+    `You have ${MAX_LIVES} lives and ${ROUND_SECONDS} seconds per circuit. The run ends when you run out of lives or time.`],
+  ['Build your streak.',
+    'Name as many gates in a row as you can. Your best streak is saved.'],
+];
 
 // Everything is laid out on a 960 × 600 board, then scaled to fit the screen.
 const BOARD = { width: 960, height: 600 };
@@ -107,7 +129,97 @@ export class GateGuessView implements View {
     this.group.getLayer()?.batchDraw();
   }
 
-  private drawHeader(model: GateGuessViewModel): void {
+  /** Draws the How to Play screen shown before a run starts. */
+  renderIntro(model: GateGuessIntroModel): void {
+    this.setCursor('default');
+    this.board.destroyChildren();
+    this.drawTitle('HOW TO PLAY: work out which logic gate is hidden in the box.');
+
+    // Numbered steps down the left, each placed under the one before it.
+    let y = 96;
+    INTRO_STEPS.forEach(([heading, body], index) => {
+      const number = new Konva.Text({
+        x: 0, y, text: `${index + 1}`, fontSize: 18, fontStyle: 'bold', fontFamily: FONT, fill: COLOR.wireOn,
+      });
+      const title = new Konva.Text({
+        x: 28, y, width: 520, text: heading, fontSize: 17, fontStyle: 'bold', fontFamily: FONT, fill: COLOR.text,
+      });
+      const text = new Konva.Text({
+        x: 28, y: y + 23, width: 520, text: body, fontSize: 14, fontFamily: FONT, fill: COLOR.dim, lineHeight: 1.3,
+      });
+      this.board.add(number, title, text);
+      y = text.y() + text.height() + 14;
+    });
+    this.drawCheatSheet();
+
+    // The best streak and START sit under the cheat sheet, leaving the left column to the steps.
+    const column = { x: 580, width: 380 };
+    this.board.add(new Konva.Text({
+      name: 'intro-best', x: column.x, y: 424, width: column.width, align: 'center', fontFamily: FONT,
+      fontSize: 15, fill: COLOR.dim, text: `BEST STREAK ${model.best}`,
+    }));
+    this.board.add(this.button({
+      name: 'start-button', x: column.x + (column.width - 260) / 2, y: 456, width: 260, height: 60,
+      label: 'START', fontSize: 26, onClick: this.handlers.onStart,
+    }));
+    this.group.getLayer()?.batchDraw();
+  }
+
+  /** A truth table of every gate in the game, so the player can match tests to gates. */
+  private drawCheatSheet(): void {
+    const panel = new Konva.Group({ name: 'cheat-sheet', x: 580, y: 96 });
+    const size = { width: 380, height: 300 };
+    panel.add(new Konva.Rect({
+      ...size, cornerRadius: 16, fill: COLOR.panel, stroke: COLOR.panelStroke, strokeWidth: 2,
+    }));
+    panel.add(new Konva.Text({
+      x: 20, y: 16, text: 'GATE CHEAT SHEET', fontSize: 16, fontStyle: 'bold', fontFamily: FONT, fill: COLOR.text,
+    }));
+    panel.add(new Konva.Text({
+      x: 20, y: 40, width: size.width - 40, fontSize: 12, fontFamily: FONT, fill: COLOR.dim,
+      text: 'OUT for each gate and each pair of inputs:',
+    }));
+
+    const columns = ['A', 'B', ...GUESS_GATES];
+    const left = 14;
+    const inputWidth = 30;
+    const gateWidth = (size.width - left * 2 - inputWidth * 2) / GUESS_GATES.length;
+    const columnX = (column: number) =>
+      left + (column < 2 ? column * inputWidth : inputWidth * 2 + (column - 2) * gateWidth);
+    const columnWidth = (column: number) => (column < 2 ? inputWidth : gateWidth);
+
+    columns.forEach((label, column) => {
+      panel.add(new Konva.Text({
+        x: columnX(column), y: 72, width: columnWidth(column), align: 'center', text: label,
+        fontSize: 13, fontStyle: 'bold', fontFamily: FONT, fill: column < 2 ? COLOR.dim : COLOR.text,
+      }));
+    });
+    panel.add(new Konva.Line({
+      points: [left, 94, size.width - left, 94], stroke: COLOR.panelStroke, strokeWidth: 2,
+    }));
+
+    const inputs: readonly (readonly [Bit, Bit])[] = [[0, 0], [0, 1], [1, 0], [1, 1]];
+    inputs.forEach(([a, b], row) => {
+      const y = 104 + row * 32;
+      const values = [a, b, ...GUESS_GATES.map((gate) => outputOf(gate, a, b))];
+      values.forEach((value, column) => {
+        panel.add(new Konva.Text({
+          x: columnX(column), y, width: columnWidth(column), align: 'center', text: String(value),
+          fontSize: 17, fontStyle: 'bold', fontFamily: FONT,
+          fill: column < 2 ? COLOR.dim : value ? COLOR.wireOn : COLOR.text,
+        }));
+      });
+    });
+
+    panel.add(new Konva.Text({
+      x: 20, y: 240, width: size.width - 40, fontSize: 12, fontFamily: FONT, fill: COLOR.dim, lineHeight: 1.3,
+      text: 'Tip: one test always fits three gates. Guessing one of them is safe and earns another test.',
+    }));
+    this.board.add(panel);
+  }
+
+  /** The back button, title and subtitle shared by the intro and the game. */
+  private drawTitle(subtitle: string): void {
     this.board.add(this.button({
       name: 'back-button', x: 0, y: 0, width: 110, height: 38, label: '← BACK',
       onClick: this.handlers.onBack, fill: 'transparent', stroke: COLOR.dim,
@@ -119,10 +231,13 @@ export class GateGuessView implements View {
       fontSize: 34, fontStyle: 'bold', fontFamily: FONT, fill: COLOR.text, listening: false,
     }));
     this.board.add(new Konva.Text({
-      x: 0, y: 52, width: BOARD.width, align: 'center', fontSize: 15, fontFamily: FONT, fill: COLOR.dim,
-      listening: false,
-      text: 'A gate is hidden in the box. Use the tests to work out which one.',
+      name: 'subtitle', x: 0, y: 52, width: BOARD.width, align: 'center', fontSize: 15, fontFamily: FONT,
+      fill: COLOR.dim, listening: false, text: subtitle,
     }));
+  }
+
+  private drawHeader(model: GateGuessViewModel): void {
+    this.drawTitle('A gate is hidden in the box. Use the tests to work out which one.');
     const hearts = '♥'.repeat(model.lives) + '♡'.repeat(Math.max(0, MAX_LIVES - model.lives));
     this.board.add(new Konva.Text({
       name: 'lives', x: BOARD.width - 260, y: -4, width: 260, align: 'right',

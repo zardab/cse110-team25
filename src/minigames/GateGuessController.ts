@@ -54,13 +54,14 @@ export class GateGuessController implements ScreenController {
       onSelectClue: (index) => this.handleSelectClue(index),
       onAction: () => this.handleAction(),
       onBack: () => this.screenSwitcher.switchToScreen({ type: 'menu' }),
+      onStart: () => this.beginRun(),
     });
   }
 
-  /** Each visit starts a fresh run. */
+  /** Each visit opens on the How to Play screen; the run and its clock wait for START. */
   start(): void {
-    this.session = startSession(this.rng);
-    this.showNewRound();
+    this.stopTimer();
+    this.view.renderIntro({ best: this.best });
   }
 
   /** Leaving the screen stops the clock. */
@@ -121,8 +122,13 @@ export class GateGuessController implements ScreenController {
       this.session = nextRound(this.session, this.rng);
       this.showNewRound();
     } else if (this.session.status === 'lost') {
-      this.start();
+      this.beginRun();
     }
+  }
+
+  private beginRun(): void {
+    this.session = startSession(this.rng);
+    this.showNewRound();
   }
 
   // Every new circuit gets the full time; the clock pauses while a solved circuit waits for Next.
