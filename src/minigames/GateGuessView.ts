@@ -52,38 +52,49 @@ const INTRO_STEPS: readonly (readonly [string, string])[] = [
     'Name as many gates in a row as you can. Your best streak is saved.'],
 ];
 
+
 // Everything is laid out on a 960 × 600 board, then scaled to fit the screen.
 const BOARD = { width: 960, height: 600 };
-const FONT = 'Courier New, monospace';
+/** The same font stack as the main game (src/index.css). */
+const FONT = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
 
+// Colors from the main game's stylesheet and board, so the minigame looks like part of it.
 const COLOR = {
-  background: '#0B1020',
-  card: '#F9FAFB',
-  cardStroke: '#CBD5E1',
-  panel: '#111827',
-  panelStroke: '#374151',
-  text: '#F9FAFB',
-  dim: '#9CA3AF',
-  ink: '#1F2937',
-  wireOff: '#CBD5E1',
+  page: '#ECECED',
+  card: '#FAFAFA',
+  surface: '#FFFFFF',
+  border: '#E4E4E7',
+  tray: '#E2E2E4',
+  badge: '#EFEFEF',
+  ink: '#18181B',
+  muted: '#71717A',
+  faint: '#A1A1AA',
+  label: '#8C8F96',
+  hover: '#4B5563',
+  wireOff: '#D1D5DB',
   wireOn: '#EAB308',
+  inputOff: '#9CA3AF',
   bulbOn: '#FACC15',
   bulbOff: '#E5E7EB',
-  mystery: '#7C3AED',
-  reveal: '#1D4ED8',
-  button: '#DC2626',
-  buttonUsed: '#374151',
-  heart: '#F87171',
+  slot: '#9CA3AF',
+  placed: '#3B82F6',
+  placedText: '#1D4ED8',
+  placedFill: '#EFF6FF',
+  one: '#CA8A04',
+  heart: '#EF4444',
+  warning: '#DC2626',
 };
 
 const TONE: Record<MessageTone, string> = {
-  info: COLOR.text,
-  hint: '#FBBF24',
-  good: '#4ADE80',
-  bad: '#F87171',
+  info: COLOR.ink,
+  hint: '#D4A000',
+  good: '#15803D',
+  bad: '#DC2626',
 };
 
-const GATE_BUTTON = { width: 130, height: 56, gap: 15, y: 452 };
+type ButtonVariant = 'primary' | 'secondary' | 'gate';
+
+const GATE_BUTTON = { width: 130, height: 56, gap: 15, y: 456 };
 const TIMER_BAR = { y: 84, height: 6 };
 /** At or below this many seconds the timer turns red. */
 const TIMER_WARNING = 5;
@@ -99,9 +110,15 @@ export class GateGuessView implements View {
   private timerBar?: Konva.Rect;
 
   constructor(width: number, height: number, private readonly handlers: GateGuessHandlers) {
-    this.group.add(new Konva.Rect({ width, height, fill: COLOR.background }));
-    // Keep a margin so text at the board's edges never touches the screen's edges.
-    const margin = 16;
+    // A light page with one rounded card on it, like the main game's board card.
+    this.group.add(new Konva.Rect({ width, height, fill: COLOR.page }));
+    const inset = 12;
+    this.group.add(new Konva.Rect({
+      x: inset, y: inset, width: width - inset * 2, height: height - inset * 2, cornerRadius: 24,
+      fill: COLOR.card, shadowColor: 'black', shadowOpacity: 0.04, shadowBlur: 10, shadowOffsetY: 2,
+    }));
+    // Keep a margin so the board's edges stay clear of the card's edges.
+    const margin = 40;
     const scale = Math.min((width - margin * 2) / BOARD.width, (height - margin * 2) / BOARD.height, 1.5);
     this.board.scale({ x: scale, y: scale });
     this.board.position({ x: (width - BOARD.width * scale) / 2, y: (height - BOARD.height * scale) / 2 });
@@ -116,14 +133,14 @@ export class GateGuessView implements View {
     this.drawCircuit(model);
     this.drawClues(model);
     this.board.add(new Konva.Text({
-      name: 'message', x: 40, y: 400, width: BOARD.width - 80, align: 'center',
-      text: model.message, fontSize: 19, fontFamily: FONT, fill: TONE[model.tone], lineHeight: 1.3,
+      name: 'message', x: 40, y: 388, width: BOARD.width - 80, align: 'center',
+      text: model.message, fontSize: 17, fontStyle: '500', fontFamily: FONT, fill: TONE[model.tone], lineHeight: 1.35,
     }));
     this.drawGateButtons(model);
     if (model.action) {
       this.board.add(this.button({
-        name: 'action-button', x: (BOARD.width - 240) / 2, y: 528, width: 240, height: 46,
-        label: model.action === 'next' ? 'NEXT CIRCUIT →' : 'PLAY AGAIN', onClick: this.handlers.onAction,
+        name: 'action-button', x: (BOARD.width - 220) / 2, y: 540, width: 220, height: 44,
+        label: model.action === 'next' ? 'Next Circuit →' : 'Play Again', onClick: this.handlers.onAction,
       }));
     }
     this.group.getLayer()?.batchDraw();
@@ -133,50 +150,48 @@ export class GateGuessView implements View {
   renderIntro(model: GateGuessIntroModel): void {
     this.setCursor('default');
     this.board.destroyChildren();
-    this.drawTitle('HOW TO PLAY: work out which logic gate is hidden in the box.');
+    this.drawTitle('Work out which logic gate is hidden in the box.');
+    this.board.add(sectionLabel('HOW TO PLAY', 0, 100));
 
     // Numbered steps down the left, each placed under the one before it.
-    let y = 96;
+    let y = 124;
     INTRO_STEPS.forEach(([heading, body], index) => {
-      const number = new Konva.Text({
-        x: 0, y, text: `${index + 1}`, fontSize: 18, fontStyle: 'bold', fontFamily: FONT, fill: COLOR.wireOn,
-      });
+      this.board.add(new Konva.Circle({ x: 11, y: y + 10, radius: 11, fill: COLOR.ink }));
+      this.board.add(new Konva.Text({
+        x: 0, y: y + 3, width: 22, align: 'center', text: `${index + 1}`,
+        fontSize: 13, fontStyle: 'bold', fontFamily: FONT, fill: COLOR.surface,
+      }));
       const title = new Konva.Text({
-        x: 28, y, width: 520, text: heading, fontSize: 17, fontStyle: 'bold', fontFamily: FONT, fill: COLOR.text,
+        x: 34, y: y + 1, width: 510, text: heading, fontSize: 16, fontStyle: 'bold', fontFamily: FONT, fill: COLOR.ink,
       });
       const text = new Konva.Text({
-        x: 28, y: y + 23, width: 520, text: body, fontSize: 14, fontFamily: FONT, fill: COLOR.dim, lineHeight: 1.3,
+        x: 34, y: y + 23, width: 510, text: body, fontSize: 14, fontFamily: FONT, fill: COLOR.muted, lineHeight: 1.35,
       });
-      this.board.add(number, title, text);
+      this.board.add(title, text);
       y = text.y() + text.height() + 14;
     });
     this.drawCheatSheet();
 
     // The best streak and START sit under the cheat sheet, leaving the left column to the steps.
     const column = { x: 580, width: 380 };
-    this.board.add(new Konva.Text({
-      name: 'intro-best', x: column.x, y: 424, width: column.width, align: 'center', fontFamily: FONT,
-      fontSize: 15, fill: COLOR.dim, text: `BEST STREAK ${model.best}`,
-    }));
+    this.board.add(badge('intro-best', `BEST STREAK ${model.best}`, column.x + column.width / 2, 432, 'center'));
     this.board.add(this.button({
-      name: 'start-button', x: column.x + (column.width - 260) / 2, y: 456, width: 260, height: 60,
-      label: 'START', fontSize: 26, onClick: this.handlers.onStart,
+      name: 'start-button', x: column.x + (column.width - 260) / 2, y: 476, width: 260, height: 56,
+      label: 'START', fontSize: 20, onClick: this.handlers.onStart,
     }));
     this.group.getLayer()?.batchDraw();
   }
 
   /** A truth table of every gate in the game, so the player can match tests to gates. */
   private drawCheatSheet(): void {
-    const panel = new Konva.Group({ name: 'cheat-sheet', x: 580, y: 96 });
+    const panel = new Konva.Group({ name: 'cheat-sheet', x: 580, y: 100 });
     const size = { width: 380, height: 300 };
     panel.add(new Konva.Rect({
-      ...size, cornerRadius: 16, fill: COLOR.panel, stroke: COLOR.panelStroke, strokeWidth: 2,
+      ...size, cornerRadius: 16, fill: COLOR.surface, stroke: COLOR.border, strokeWidth: 1.5,
     }));
+    panel.add(sectionLabel('GATE CHEAT SHEET', 20, 18));
     panel.add(new Konva.Text({
-      x: 20, y: 16, text: 'GATE CHEAT SHEET', fontSize: 16, fontStyle: 'bold', fontFamily: FONT, fill: COLOR.text,
-    }));
-    panel.add(new Konva.Text({
-      x: 20, y: 40, width: size.width - 40, fontSize: 12, fontFamily: FONT, fill: COLOR.dim,
+      x: 20, y: 38, width: size.width - 40, fontSize: 13, fontFamily: FONT, fill: COLOR.muted,
       text: 'OUT for each gate and each pair of inputs:',
     }));
 
@@ -191,11 +206,11 @@ export class GateGuessView implements View {
     columns.forEach((label, column) => {
       panel.add(new Konva.Text({
         x: columnX(column), y: 72, width: columnWidth(column), align: 'center', text: label,
-        fontSize: 13, fontStyle: 'bold', fontFamily: FONT, fill: column < 2 ? COLOR.dim : COLOR.text,
+        fontSize: 13, fontStyle: 'bold', fontFamily: FONT, fill: column < 2 ? COLOR.faint : COLOR.ink,
       }));
     });
     panel.add(new Konva.Line({
-      points: [left, 94, size.width - left, 94], stroke: COLOR.panelStroke, strokeWidth: 2,
+      points: [left, 94, size.width - left, 94], stroke: COLOR.border, strokeWidth: 1.5,
     }));
 
     const inputs: readonly (readonly [Bit, Bit])[] = [[0, 0], [0, 1], [1, 0], [1, 1]];
@@ -206,13 +221,13 @@ export class GateGuessView implements View {
         panel.add(new Konva.Text({
           x: columnX(column), y, width: columnWidth(column), align: 'center', text: String(value),
           fontSize: 17, fontStyle: 'bold', fontFamily: FONT,
-          fill: column < 2 ? COLOR.dim : value ? COLOR.wireOn : COLOR.text,
+          fill: column < 2 ? COLOR.faint : value ? COLOR.one : COLOR.muted,
         }));
       });
     });
 
     panel.add(new Konva.Text({
-      x: 20, y: 240, width: size.width - 40, fontSize: 12, fontFamily: FONT, fill: COLOR.dim, lineHeight: 1.3,
+      x: 20, y: 240, width: size.width - 40, fontSize: 13, fontFamily: FONT, fill: COLOR.muted, lineHeight: 1.35,
       text: 'Tip: one test always fits three gates. Guessing one of them is safe and earns another test.',
     }));
     this.board.add(panel);
@@ -221,45 +236,56 @@ export class GateGuessView implements View {
   /** The back button, title and subtitle shared by the intro and the game. */
   private drawTitle(subtitle: string): void {
     this.board.add(this.button({
-      name: 'back-button', x: 0, y: 0, width: 110, height: 38, label: '← BACK',
-      onClick: this.handlers.onBack, fill: 'transparent', stroke: COLOR.dim,
+      name: 'back-button', x: 0, y: 0, width: 96, height: 36, label: '← Back',
+      onClick: this.handlers.onBack, variant: 'secondary', fontSize: 14,
     }));
     // The title and subtitle span the full board width and overlap the back button,
     // so they must not listen for pointer events or they swallow its clicks.
     this.board.add(new Konva.Text({
-      x: 0, y: 10, width: BOARD.width, align: 'center', text: 'NAME THAT GATE',
-      fontSize: 34, fontStyle: 'bold', fontFamily: FONT, fill: COLOR.text, listening: false,
+      x: 0, y: 6, width: BOARD.width, align: 'center', text: 'Name That Gate',
+      fontSize: 30, fontStyle: 'bold', fontFamily: FONT, fill: COLOR.ink, listening: false,
     }));
     this.board.add(new Konva.Text({
-      name: 'subtitle', x: 0, y: 52, width: BOARD.width, align: 'center', fontSize: 15, fontFamily: FONT,
-      fill: COLOR.dim, listening: false, text: subtitle,
+      name: 'subtitle', x: 0, y: 46, width: BOARD.width, align: 'center', fontSize: 15, fontFamily: FONT,
+      fill: COLOR.muted, listening: false, text: subtitle,
     }));
   }
 
   private drawHeader(model: GateGuessViewModel): void {
     this.drawTitle('A gate is hidden in the box. Use the tests to work out which one.');
-    const hearts = '♥'.repeat(model.lives) + '♡'.repeat(Math.max(0, MAX_LIVES - model.lives));
-    this.board.add(new Konva.Text({
-      name: 'lives', x: BOARD.width - 260, y: -4, width: 260, align: 'right',
-      text: hearts, fontSize: 40, fill: COLOR.heart, letterSpacing: 2,
-    }));
-    this.board.add(new Konva.Text({
-      name: 'score', x: BOARD.width - 260, y: 42, width: 260, align: 'right', fontFamily: FONT,
-      text: `STREAK ${model.streak}   BEST ${model.best}`, fontSize: 14, fill: COLOR.dim,
-    }));
+    this.drawLives(model.lives);
+    this.board.add(badge('score', `STREAK ${model.streak}   BEST ${model.best}`, BOARD.width, 44, 'right'));
 
-    this.timerText = new Konva.Text({
-      name: 'timer', x: 0, y: 50, width: 150, fontSize: 20, fontStyle: 'bold', fontFamily: FONT,
-    });
-    this.board.add(this.timerText);
+    const timer = badge('timer', '', 0, 44, 'left', 76);
+    this.timerText = timer.findOne<Konva.Text>('.timer');
+    this.board.add(timer);
     this.board.add(new Konva.Rect({
-      x: 0, y: TIMER_BAR.y, width: BOARD.width, height: TIMER_BAR.height, cornerRadius: 3, fill: COLOR.panelStroke,
+      x: 0, y: TIMER_BAR.y, width: BOARD.width, height: TIMER_BAR.height, cornerRadius: 3, fill: COLOR.border,
     }));
     this.timerBar = new Konva.Rect({
       name: 'timer-bar', x: 0, y: TIMER_BAR.y, height: TIMER_BAR.height, cornerRadius: 3,
     });
     this.board.add(this.timerBar);
     this.showTime(model.timeLeft);
+  }
+
+  /**
+   * One heart per life, right-aligned. Lost lives use the same ♥ glyph drawn as an outline:
+   * the outline glyph ♡ comes out smaller than ♥ in most fonts.
+   */
+  private drawLives(lives: number): void {
+    const size = 40;
+    const gap = 2;
+    const width = new Konva.Text({ text: '♥', fontSize: size }).width();
+    const group = new Konva.Group({ name: 'lives', x: BOARD.width - MAX_LIVES * (width + gap) + gap, y: -8 });
+    for (let i = 0; i < MAX_LIVES; i += 1) {
+      const full = i < lives;
+      group.add(new Konva.Text({
+        name: full ? 'heart-full' : 'heart-empty', x: i * (width + gap), text: '♥', fontSize: size,
+        fill: full ? COLOR.heart : 'transparent', stroke: full ? undefined : COLOR.heart, strokeWidth: full ? 0 : 1.5,
+      }));
+    }
+    this.board.add(group);
   }
 
   /** Updates only the timer, so a tick doesn't rebuild the board under the pointer. */
@@ -269,44 +295,43 @@ export class GateGuessView implements View {
   }
 
   private showTime(seconds: number): void {
-    const color = seconds <= TIMER_WARNING ? '#F87171' : COLOR.wireOn;
-    this.timerText?.text(`⏱ ${seconds}s`).fill(color);
-    this.timerBar?.width(BOARD.width * Math.max(0, seconds) / ROUND_SECONDS).fill(color);
+    const warning = seconds <= TIMER_WARNING;
+    this.timerText?.text(`⏱ ${seconds}s`).fill(warning ? COLOR.warning : COLOR.ink);
+    this.timerBar?.width(BOARD.width * Math.max(0, seconds) / ROUND_SECONDS)
+      .fill(warning ? COLOR.warning : COLOR.wireOn);
   }
 
   private drawCircuit(model: GateGuessViewModel): void {
     const clue = model.clues[model.selectedClue];
-    const card = new Konva.Group({ x: 40, y: 100 });
+    const card = new Konva.Group({ x: 40, y: 104 });
     card.add(new Konva.Rect({
-      width: 560, height: 270, cornerRadius: 16, fill: COLOR.card, stroke: COLOR.cardStroke, strokeWidth: 2,
+      width: 560, height: 266, cornerRadius: 16, fill: COLOR.surface, stroke: COLOR.border, strokeWidth: 1.5,
     }));
-    card.add(new Konva.Text({
-      x: 20, y: 14, fontSize: 13, fontFamily: FONT, fill: COLOR.dim,
-      text: `SHOWING TEST ${model.selectedClue + 1} OF ${model.clues.length}`,
-    }));
+    card.add(sectionLabel(`SHOWING TEST ${model.selectedClue + 1} OF ${model.clues.length}`, 20, 16));
 
-    const box = { x: 230, y: 85, width: 130, height: 110 };
-    const inputs: [string, number, 0 | 1][] = [['A', 105, clue.a], ['B', 175, clue.b]];
+    const box = { x: 230, y: 85, width: 130, height: 100 };
+    const inputs: [string, number, 0 | 1][] = [['A', 105, clue.a], ['B', 165, clue.b]];
     for (const [name, y, value] of inputs) {
       card.add(new Konva.Text({
-        x: 22, y: y - 13, text: '⚡', fontSize: 26, fill: value ? COLOR.wireOn : COLOR.dim,
+        x: 22, y: y - 13, text: '⚡', fontSize: 26, fill: value ? COLOR.wireOn : COLOR.inputOff,
       }));
       card.add(new Konva.Text({
-        x: 56, y: y - 10, text: `${name} = ${value}`, fontSize: 18, fontStyle: 'bold', fontFamily: FONT, fill: COLOR.ink,
+        x: 56, y: y - 9, text: `${name} = ${value}`, fontSize: 17, fontStyle: 'bold', fontFamily: FONT, fill: COLOR.ink,
       }));
       card.add(wire([140, y, box.x, y], value));
     }
 
+    // The hidden gate looks like the main game's empty "DROP GATE" slot, and like a placed gate once revealed.
     const outY = box.y + box.height / 2;
     card.add(wire([box.x + box.width, outY, 445, outY], clue.out));
     const hidden = model.revealedGate === null;
     card.add(new Konva.Rect({
-      ...box, cornerRadius: 14, strokeWidth: 3,
-      fill: hidden ? '#F5F3FF' : '#EFF6FF', stroke: hidden ? COLOR.mystery : COLOR.reveal, dash: hidden ? [8, 6] : [],
+      ...box, cornerRadius: 14, strokeWidth: 2,
+      fill: hidden ? COLOR.card : COLOR.placedFill, stroke: hidden ? COLOR.slot : COLOR.placed, dash: hidden ? [6, 5] : [],
     }));
     card.add(new Konva.Text({
       name: 'gate-box', ...box, align: 'center', verticalAlign: 'middle', fontFamily: FONT, fontStyle: 'bold',
-      text: hidden ? '?' : model.revealedGate!, fontSize: hidden ? 54 : 26, fill: hidden ? COLOR.mystery : COLOR.reveal,
+      text: hidden ? '?' : model.revealedGate!, fontSize: hidden ? 44 : 24, fill: hidden ? COLOR.slot : COLOR.placedText,
     }));
 
     const bulb = { x: 475, y: outY };
@@ -315,38 +340,37 @@ export class GateGuessView implements View {
     card.add(new Konva.Text({ ...bulb, text: '💡', fontSize: 26, offsetX: 13, offsetY: 13 }));
     card.add(new Konva.Text({
       x: bulb.x - 50, y: bulb.y + 38, width: 100, align: 'center', text: `OUT = ${clue.out}`,
-      fontSize: 18, fontStyle: 'bold', fontFamily: FONT, fill: COLOR.ink,
+      fontSize: 17, fontStyle: 'bold', fontFamily: FONT, fill: COLOR.ink,
     }));
     this.board.add(card);
   }
 
   private drawClues(model: GateGuessViewModel): void {
-    const panel = new Konva.Group({ x: 630, y: 100 });
+    const panel = new Konva.Group({ x: 630, y: 104 });
     panel.add(new Konva.Rect({
-      width: 290, height: 270, cornerRadius: 16, fill: COLOR.panel, stroke: COLOR.panelStroke, strokeWidth: 2,
+      width: 290, height: 266, cornerRadius: 16, fill: COLOR.surface, stroke: COLOR.border, strokeWidth: 1.5,
     }));
-    panel.add(new Konva.Text({
-      x: 20, y: 16, text: 'TESTS', fontSize: 16, fontStyle: 'bold', fontFamily: FONT, fill: COLOR.text,
-    }));
+    panel.add(sectionLabel('TESTS', 20, 16));
     const columns = [{ label: 'A', x: 60 }, { label: 'B', x: 130 }, { label: 'OUT', x: 210 }];
     for (const { label, x } of columns) {
       panel.add(new Konva.Text({
-        x: x - 30, y: 50, width: 60, align: 'center', text: label, fontSize: 14, fontFamily: FONT, fill: COLOR.dim,
+        x: x - 30, y: 46, width: 60, align: 'center', text: label, fontSize: 13, fontStyle: 'bold',
+        fontFamily: FONT, fill: COLOR.faint,
       }));
     }
 
     model.clues.forEach((clue, index) => {
       const selected = index === model.selectedClue;
-      const row = new Konva.Group({ name: `clue-row-${index}`, x: 14, y: 76 + index * 46 });
+      const row = new Konva.Group({ name: `clue-row-${index}`, x: 14, y: 70 + index * 46 });
       row.add(new Konva.Rect({
-        width: 262, height: 38, cornerRadius: 8,
-        fill: selected ? '#1E293B' : 'transparent', stroke: selected ? COLOR.wireOn : COLOR.panelStroke,
+        width: 262, height: 38, cornerRadius: 10, strokeWidth: selected ? 1.5 : 1,
+        fill: selected ? '#F4F4F5' : COLOR.surface, stroke: selected ? COLOR.ink : COLOR.border,
       }));
       const values = [clue.a, clue.b, clue.out];
       columns.forEach(({ x }, column) => {
         row.add(new Konva.Text({
-          x: x - 44, y: 10, width: 60, align: 'center', text: String(values[column]), fontSize: 18,
-          fontStyle: 'bold', fontFamily: FONT, fill: column === 2 && values[2] ? COLOR.wireOn : COLOR.text,
+          x: x - 44, y: 10, width: 60, align: 'center', text: String(values[column]), fontSize: 17,
+          fontStyle: 'bold', fontFamily: FONT, fill: column === 2 && values[2] ? COLOR.one : COLOR.ink,
         }));
       });
       onPress(row, () => this.handlers.onSelectClue(index));
@@ -354,24 +378,30 @@ export class GateGuessView implements View {
     });
 
     panel.add(new Konva.Text({
-      x: 20, y: 222, width: 250, fontSize: 12, fontFamily: FONT, fill: COLOR.dim, lineHeight: 1.3,
+      x: 20, y: 214, width: 250, fontSize: 12, fontFamily: FONT, fill: COLOR.muted, lineHeight: 1.35,
       text: 'Click a test to show it on the circuit. Guessing a gate that fits every test earns a new one.',
     }));
     this.board.add(panel);
   }
 
+  /** The gates sit in a tray like the main game's "Available Gates" palette. */
   private drawGateButtons(model: GateGuessViewModel): void {
     const total = GUESS_GATES.length * GATE_BUTTON.width + (GUESS_GATES.length - 1) * GATE_BUTTON.gap;
+    const start = (BOARD.width - total) / 2;
+    const padding = 12;
+    this.board.add(new Konva.Rect({
+      x: start - padding, y: GATE_BUTTON.y - padding, width: total + padding * 2,
+      height: GATE_BUTTON.height + padding * 2, cornerRadius: 16, fill: COLOR.tray,
+    }));
     const playing = model.action === null;
     GUESS_GATES.forEach((gate, index) => {
       const used = model.guessed.includes(gate) && gate !== model.revealedGate;
       const enabled = playing && !used;
       this.board.add(this.button({
-        name: `gate-button-${gate}`,
-        x: (BOARD.width - total) / 2 + index * (GATE_BUTTON.width + GATE_BUTTON.gap),
-        y: GATE_BUTTON.y, width: GATE_BUTTON.width, height: GATE_BUTTON.height, label: gate, fontSize: 20,
-        fill: used ? COLOR.buttonUsed : gate === model.revealedGate ? '#16A34A' : COLOR.button,
-        textColor: used ? COLOR.dim : 'black', strike: used,
+        name: `gate-button-${gate}`, variant: 'gate',
+        x: start + index * (GATE_BUTTON.width + GATE_BUTTON.gap),
+        y: GATE_BUTTON.y, width: GATE_BUTTON.width, height: GATE_BUTTON.height, label: gate, fontSize: 17,
+        revealed: gate === model.revealedGate, used,
         onClick: enabled ? () => this.handlers.onGuess(gate) : undefined,
       }));
     });
@@ -379,22 +409,46 @@ export class GateGuessView implements View {
 
   private button(options: {
     name: string; x: number; y: number; width: number; height: number; label: string;
-    onClick?: () => void; fill?: string; stroke?: string; textColor?: string;
-    fontSize?: number; strike?: boolean;
+    onClick?: () => void; variant?: ButtonVariant; fontSize?: number; used?: boolean; revealed?: boolean;
   }): Konva.Group {
-    const { name, x, y, width, height, label, onClick } = options;
+    const { name, x, y, width, height, label, onClick, variant = 'primary' } = options;
     const group = new Konva.Group({ name, x, y });
-    group.add(new Konva.Rect({
-      width, height, fill: options.fill ?? COLOR.button,
-      stroke: options.stroke, strokeWidth: options.stroke ? 2 : 0,
-    }));
+    let fill: string = COLOR.ink;
+    let stroke: string | undefined;
+    let textColor: string = COLOR.surface;
+    if (variant === 'secondary') {
+      fill = COLOR.border;
+      textColor = COLOR.ink;
+    } else if (variant === 'gate') {
+      fill = options.revealed ? COLOR.placedFill : COLOR.surface;
+      stroke = options.revealed ? COLOR.placed : '#E5E7EB';
+      textColor = options.revealed ? COLOR.placedText : COLOR.ink;
+    }
+    const rect = new Konva.Rect({
+      width, height, fill, stroke, strokeWidth: stroke ? 1.5 : 0, cornerRadius: variant === 'gate' ? 12 : 8,
+    });
+    group.add(rect);
     group.add(new Konva.Text({
       width, height, text: label, align: 'center', verticalAlign: 'middle', fontFamily: FONT, fontStyle: 'bold',
-      fontSize: options.fontSize ?? 16, fill: options.textColor ?? (options.fill === 'transparent' ? COLOR.text : 'black'),
-      textDecoration: options.strike ? 'line-through' : '',
+      fontSize: options.fontSize ?? 15, fill: textColor, textDecoration: options.used ? 'line-through' : '',
     }));
+    // Spent gates fade out, like a gate with none left in the main game's tray.
+    if (options.used) group.opacity(0.4);
     group.setAttr('enabled', Boolean(onClick));
-    if (onClick) onPress(group, onClick);
+    if (onClick) {
+      onPress(group, onClick);
+      // Hover feedback matches the main game: gate cards get a darker border, buttons dim slightly.
+      group.on('mouseenter', () => {
+        if (variant === 'gate') rect.stroke(COLOR.hover);
+        else group.opacity(0.9);
+        group.getLayer()?.batchDraw();
+      });
+      group.on('mouseleave', () => {
+        if (variant === 'gate') rect.stroke(stroke);
+        else group.opacity(1);
+        group.getLayer()?.batchDraw();
+      });
+    }
     return group;
   }
 
@@ -419,9 +473,34 @@ export class GateGuessView implements View {
   }
 }
 
+/** A small, bold, spaced-out uppercase label, like the main game's "AVAILABLE GATES". */
+function sectionLabel(text: string, x: number, y: number): Konva.Text {
+  return new Konva.Text({
+    x, y, text, fontSize: 11, fontStyle: 'bold', fontFamily: FONT, fill: COLOR.label, letterSpacing: 1,
+  });
+}
+
+/**
+ * A rounded gray badge, like the main game's level badge and timer. `x` is the badge's
+ * left edge, center or right edge depending on `anchor`. The text node carries `name`.
+ */
+function badge(
+  name: string, text: string, x: number, y: number, anchor: 'left' | 'center' | 'right', minWidth = 0,
+): Konva.Group {
+  const label = new Konva.Text({
+    name, text, x: 12, y: 7, fontSize: 14, fontStyle: 'bold', fontFamily: FONT, fill: COLOR.ink,
+  });
+  const width = Math.max(minWidth, label.width() + 24);
+  label.width(width - 24).align('center');
+  const left = anchor === 'left' ? x : anchor === 'center' ? x - width / 2 : x - width;
+  const group = new Konva.Group({ x: left, y });
+  group.add(new Konva.Rect({ width, height: 30, cornerRadius: 8, fill: COLOR.badge }), label);
+  return group;
+}
+
 function wire(points: number[], value: 0 | 1): Konva.Line {
   return new Konva.Line({
-    points, stroke: value ? COLOR.wireOn : COLOR.wireOff, strokeWidth: value ? 5 : 4, lineCap: 'round',
+    points, stroke: value ? COLOR.wireOn : COLOR.wireOff, strokeWidth: value ? 4 : 3, lineCap: 'round', lineJoin: 'round',
   });
 }
 

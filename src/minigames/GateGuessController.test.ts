@@ -33,11 +33,16 @@ function setup(initial: Record<string, string> = {}, { pressStart = true } = {})
   const click = (name: string) => find(name).fire('click');
   if (pressStart) click('start-button');
   const enabled = (name: string) => find(name).getAttr('enabled') as boolean;
+  // Full and empty hearts, e.g. "2/1" for two lives left of three.
+  const hearts = () => {
+    const lives = find('lives') as Konva.Group;
+    return `${lives.find('.heart-full').length}/${lives.find('.heart-empty').length}`;
+  };
   const round = () => controller.getSession().round;
   const wrongGate = (): GuessGate => GUESS_GATES.find((gate) => !fits(gate, round().clues))!;
   const fittingGate = () =>
     GUESS_GATES.find((gate) => gate !== round().answer && fits(gate, round().clues));
-  return { controller, switcher, storage, find, text, click, enabled, round, wrongGate, fittingGate };
+  return { controller, switcher, storage, find, text, click, enabled, hearts, round, wrongGate, fittingGate };
 }
 
 describe('GateGuessController', () => {
@@ -97,10 +102,10 @@ describe('GateGuessController', () => {
   });
 
   it('starts with the gate hidden, one test and every gate button enabled', () => {
-    const { text, enabled, find, round } = setup();
+    const { text, enabled, find, round, hearts } = setup();
     expect(text('gate-box')).toBe('?');
     expect(text('message')).toContain('Which gate is it?');
-    expect(text('lives')).toBe('♥'.repeat(MAX_LIVES));
+    expect(hearts()).toBe(`${MAX_LIVES}/0`);
     expect(find('clue-row-0')).toBeTruthy();
     expect(find('clue-row-1')).toBeUndefined();
     expect(find('action-button')).toBeUndefined();
@@ -130,7 +135,7 @@ describe('GateGuessController', () => {
     const gate = s.fittingGate()!;
     s.click(`gate-button-${gate}`);
     expect(s.text('message')).toContain(`${gate} fits so far`);
-    expect(s.text('lives')).toBe('♥'.repeat(MAX_LIVES));
+    expect(s.hearts()).toBe(`${MAX_LIVES}/0`);
     expect(s.find('clue-row-1')).toBeTruthy();
     expect(s.text('gate-box')).toBe('?');
     expect(s.enabled(`gate-button-${gate}`)).toBe(false);
@@ -142,7 +147,11 @@ describe('GateGuessController', () => {
     s.click(`gate-button-${gate}`);
     expect(s.text('message')).toContain(`${gate} doesn't fit`);
     expect(s.text('message')).toContain(`${MAX_LIVES - 1} lives left`);
-    expect(s.text('lives')).toBe('♥'.repeat(MAX_LIVES - 1) + '♡');
+    expect(s.hearts()).toBe(`${MAX_LIVES - 1}/1`);
+    // Lost lives use the same glyph and size as the full hearts, drawn as an outline.
+    const [full, empty] = [s.find('heart-full') as Konva.Text, s.find('heart-empty') as Konva.Text];
+    expect(empty.text()).toBe(full.text());
+    expect(empty.fontSize()).toBe(full.fontSize());
   });
 
   it('ends the run after the last life and starts over on Play Again', () => {
