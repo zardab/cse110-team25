@@ -49,9 +49,9 @@ window.addEventListener("DOMContentLoaded", () => {
     scene.switchToScreen({ type: "gateGuess" });
   };
   
+  // Minigame 2 is "Fault Finder", a Konva screen inside the scene.
   const openMinigame2 = () => {
-    // Connect standalone Minigame 2 here.
-    console.warn("Minigame 2 is not connected yet.");
+    scene.switchToScreen({ type: "faultFinder" });
   };
 
   const scene = new SceneController(openLevel, openMinigame1, openMinigame2);

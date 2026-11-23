@@ -1,0 +1,40 @@
+{
+  "id": "fault_03_needle",
+  "title": "Needle in the Table",
+  "briefing": "This fault only shows up for a few input combinations. Random testing will burn your budget. Think about which inputs make each gate matter.",
+  "primaryInputs": ["A", "B", "C", "D"],
+  "primaryOutputs": ["Z"],
+  "slots": {
+    "g_or": {
+      "id": "g_or",
+      "inputs": [
+        {"sourceType": "PRIMARY_INPUT", "sourceId": "A"},
+        {"sourceType": "PRIMARY_INPUT", "sourceId": "B"}
+      ],
+      "outputWireId": "w_or",
+      "assignedGate": "OR"
+    },
+    "g_and": {
+      "id": "g_and",
+      "inputs": [
+        {"sourceType": "PRIMARY_INPUT", "sourceId": "C"},
+        {"sourceType": "PRIMARY_INPUT", "sourceId": "D"}
+      ],
+      "outputWireId": "w_and",
+      "assignedGate": "AND"
+    },
+    "g_xor": {
+      "id": "g_xor",
+      "inputs": [
+        {"sourceType": "SLOT_OUTPUT", "sourceId": "g_or"},
+        {"sourceType": "SLOT_OUTPUT", "sourceId": "g_and"}
+      ],
+      "outputWireId": "Z",
+      "assignedGate": "XOR"
+    }
+  },
+  "faults": {"g_and": 0},
+  "testBudget": 4,
+  "probeBudget": 1,
+  "maxMistakes": 2
+}

@@ -1,4 +1,4 @@
-import type { CircuitSlot, GateType, LevelConfig, SignalSource } from '../types/circuit'
+import type { CircuitSlot, CompiledCircuit, GateType, LevelConfig, SignalSource } from '../types/circuit'
 
 export const GATE_TYPES: readonly GateType[] = [
   'AND', 'OR', 'NOT', 'XOR', 'NAND', 'NOR', 'XNOR',
@@ -182,7 +182,7 @@ function executionOrder(circuitSlots: Record<string, CircuitSlot>): string[] {
   return order
 }
 
-function binaryValues(value: unknown, expectedIds: string[], path: string): Record<string, 0 | 1> {
+function binaryValues(value: unknown, expectedIds: readonly string[], path: string): Record<string, 0 | 1> {
   const values = record(value, path)
   if (Object.keys(values).length !== expectedIds.length
     || expectedIds.some((id) => !Object.hasOwn(values, id))) {
@@ -193,6 +193,20 @@ function binaryValues(value: unknown, expectedIds: string[], path: string): Reco
     if (bit !== 0 && bit !== 1) fail(`${path}.${id}`, 'expected binary value 0 or 1')
     return [id, bit]
   }))
+}
+
+/**
+ * Parse the circuit part of a level record (inputs, outputs, slots), validate its wiring
+ * and compute its execution order. Shared by every level format that carries a circuit.
+ */
+export function compileCircuit(level: Record<string, unknown>): CompiledCircuit {
+  const primaryInputs = identifiers(level.primaryInputs, 'primaryInputs')
+  const primaryOutputs = identifiers(level.primaryOutputs, 'primaryOutputs')
+  if (primaryInputs.length === 0) fail('primaryInputs', 'expected at least one input')
+  if (primaryOutputs.length === 0) fail('primaryOutputs', 'expected at least one output')
+  const circuitSlots = slots(level.slots)
+  validateWiring(circuitSlots, primaryInputs, primaryOutputs)
+  return { primaryInputs, primaryOutputs, slots: circuitSlots, executionOrder: executionOrder(circuitSlots) }
 }
 
 /** Parse and compile untrusted level JSON without mutating the supplied object. */
@@ -213,11 +227,7 @@ export function loadLevel(input: unknown): LevelConfig {
     fail('difficulty', 'expected EASY or HARD')
   }
   const availableGatePalette = palette(level.availableGatePalette)
-  const primaryInputs = identifiers(level.primaryInputs, 'primaryInputs')
-  const primaryOutputs = identifiers(level.primaryOutputs, 'primaryOutputs')
-  if (primaryInputs.length === 0) fail('primaryInputs', 'expected at least one input')
-  if (primaryOutputs.length === 0) fail('primaryOutputs', 'expected at least one output')
-  const circuitSlots = slots(level.slots)
+  const { primaryInputs, primaryOutputs, slots: circuitSlots, executionOrder: order } = compileCircuit(level)
   const assignedCounts = new Map<GateType, number>()
   for (const slot of Object.values(circuitSlots)) {
     if (slot.assignedGate === 'NULL') continue
@@ -227,8 +237,6 @@ export function loadLevel(input: unknown): LevelConfig {
     }
     assignedCounts.set(slot.assignedGate, count)
   }
-  validateWiring(circuitSlots, primaryInputs, primaryOutputs)
-  const order = executionOrder(circuitSlots)
   const inputValues = binaryValues(level.inputValues, primaryInputs, 'inputValues')
   const targetOutputs = binaryValues(level.targetOutputs, primaryOutputs, 'targetOutputs')
   const hints = list(level.hints, 'hints').map((value, index) => {

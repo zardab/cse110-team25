@@ -1,0 +1,58 @@
+{
+  "id": "fault_05_double_fault",
+  "title": "Double Fault",
+  "briefing": "Two gates are stuck this time, and one can hide the other. Mark both before you submit.",
+  "primaryInputs": ["A", "B", "C", "D"],
+  "primaryOutputs": ["Z", "Y"],
+  "slots": {
+    "g_xor1": {
+      "id": "g_xor1",
+      "inputs": [
+        {"sourceType": "PRIMARY_INPUT", "sourceId": "A"},
+        {"sourceType": "PRIMARY_INPUT", "sourceId": "B"}
+      ],
+      "outputWireId": "w_xor1",
+      "assignedGate": "XOR"
+    },
+    "g_or": {
+      "id": "g_or",
+      "inputs": [
+        {"sourceType": "PRIMARY_INPUT", "sourceId": "C"},
+        {"sourceType": "PRIMARY_INPUT", "sourceId": "D"}
+      ],
+      "outputWireId": "w_or",
+      "assignedGate": "OR"
+    },
+    "g_and": {
+      "id": "g_and",
+      "inputs": [
+        {"sourceType": "SLOT_OUTPUT", "sourceId": "g_xor1"},
+        {"sourceType": "SLOT_OUTPUT", "sourceId": "g_or"}
+      ],
+      "outputWireId": "Z",
+      "assignedGate": "AND"
+    },
+    "g_nor": {
+      "id": "g_nor",
+      "inputs": [
+        {"sourceType": "SLOT_OUTPUT", "sourceId": "g_or"},
+        {"sourceType": "PRIMARY_INPUT", "sourceId": "A"}
+      ],
+      "outputWireId": "w_nor",
+      "assignedGate": "NOR"
+    },
+    "g_xnor": {
+      "id": "g_xnor",
+      "inputs": [
+        {"sourceType": "SLOT_OUTPUT", "sourceId": "g_nor"},
+        {"sourceType": "SLOT_OUTPUT", "sourceId": "g_xor1"}
+      ],
+      "outputWireId": "Y",
+      "assignedGate": "XNOR"
+    }
+  },
+  "faults": {"g_or": 1, "g_xnor": 0},
+  "testBudget": 6,
+  "probeBudget": 2,
+  "maxMistakes": 3
+}
