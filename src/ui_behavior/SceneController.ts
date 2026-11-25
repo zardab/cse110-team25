@@ -28,6 +28,7 @@ export class SceneController implements ScreenSwitcher {
   private screens: Record<KonvaScreenId, ScreenController>;
 
   private breakerController: locateBreakerBoxController;
+  private tutorialController: TutorialController;
 
   constructor(
     private onLevel: (levelId: string) => void,
@@ -53,6 +54,12 @@ export class SceneController implements ScreenSwitcher {
       (levelId) => this.openLevel(levelId),
     );
 
+    this.tutorialController = new TutorialController(
+      width,
+      height,
+      () => this.showKonvaScreen("levelSelector"),
+    );
+
     this.screens = {
       menu: new MainMenuController(this, width, height),
 
@@ -62,11 +69,7 @@ export class SceneController implements ScreenSwitcher {
         () => this.showKonvaScreen("tutorial"),
       ),
 
-      tutorial: new TutorialController(
-        width,
-        height,
-        () => this.showKonvaScreen("levelSelector"),
-      ),
+      tutorial: this.tutorialController,
 
       levelSelector: new LevelSelectorController(
         width,
@@ -162,6 +165,18 @@ export class SceneController implements ScreenSwitcher {
         this.onMinigame2();
         return;
     }
+  }
+
+  /** Opens How to Play from inside a level; its button hides the scene and calls onBack. */
+  public showTutorialFromLevel(onBack: () => void): void {
+    this.tutorialController.setExit({
+      label: "Back to level",
+      onExit: () => {
+        this.hideAllScreens();
+        onBack();
+      },
+    });
+    this.showKonvaScreen("tutorial");
   }
 
   private hideAllScreens(): void {

@@ -475,3 +475,69 @@ describe('Main Menu button', () => {
     expect(render.mock.lastCall![0].slots.slot_and.assignedGate).toBe('AND');
   });
 });
+
+describe('Tutorial button', () => {
+  const [foundations] = mainLevels;
+  let screen: LevelScreen;
+  let storage: StorageAdapter;
+
+  beforeEach(() => {
+    localStorage.clear();
+    storage = new StorageAdapter();
+    document.body.innerHTML = `
+      <div id="konva-container"></div>
+      <div id="palette-grid"></div>
+      <button id="reset-btn"></button>
+      <button id="undo-btn"></button>
+      <button id="menu-btn"></button>
+      <div id="game-sidebar" hidden>
+        <button id="sidebar-close-btn"></button>
+        <button id="tutorial-btn"></button>
+        <button id="main-menu-btn"></button>
+        <button id="difficulty-toggle" data-mode="EASY"></button>
+      </div>
+    `;
+  });
+
+  afterEach(() => screen?.destroy());
+
+  it('has an id in the game sidebar of index.html', () => {
+    const page = new DOMParser().parseFromString(indexHtml, 'text/html');
+    expect(page.querySelector('#game-sidebar #tutorial-btn')?.textContent?.trim()).toBe('Tutorial');
+  });
+
+  it('closes the sidebar and calls onTutorial once per click', () => {
+    const onTutorial = vi.fn();
+    screen = new LevelScreen({ level: foundations, storage, onTutorial });
+    document.getElementById('menu-btn')!.click();
+    document.getElementById('tutorial-btn')!.click();
+    expect(onTutorial).toHaveBeenCalledTimes(1);
+    expect(document.getElementById('game-sidebar')!.hidden).toBe(true);
+  });
+
+  it('leaves the board as it was so the player can come back to it', () => {
+    screen = new LevelScreen({ level: foundations, storage, onTutorial: () => {} });
+    options.onPlaceGate('slot_and', 'AND');
+    document.getElementById('tutorial-btn')!.click();
+    options.onPlaceGate('slot_or', 'OR');
+    const slots = render.mock.lastCall![0].slots;
+    expect(slots.slot_and.assignedGate).toBe('AND');
+    expect(slots.slot_or.assignedGate).toBe('OR');
+  });
+
+  it('does nothing when no onTutorial callback is given', () => {
+    screen = new LevelScreen({ level: foundations, storage });
+    document.getElementById('menu-btn')!.click();
+    expect(() => document.getElementById('tutorial-btn')!.click()).not.toThrow();
+    expect(document.getElementById('game-sidebar')!.hidden).toBe(false);
+  });
+
+  it('stops calling onTutorial once the level is destroyed', () => {
+    const onTutorial = vi.fn();
+    screen = new LevelScreen({ level: foundations, storage, onTutorial });
+    screen.destroy();
+    document.getElementById('tutorial-btn')!.click();
+    expect(onTutorial).not.toHaveBeenCalled();
+    screen = new LevelScreen({ level: foundations, storage });
+  });
+});

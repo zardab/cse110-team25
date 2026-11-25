@@ -1,7 +1,7 @@
 import Konva from "konva";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { TutorialController } from "./TutorialController";
-import { OUTPUT_RULES } from "./TutorialView";
+import { DEFAULT_BUTTON_LABEL, OUTPUT_RULES } from "./TutorialView";
 
 function setup() {
 	const onContinue = vi.fn();
@@ -66,6 +66,41 @@ describe("TutorialController", () => {
 		s.controller.stop();
 		press("Enter");
 		expect(s.onContinue).not.toHaveBeenCalled();
+	});
+
+	it("goes back to the level instead of the level selector when given an exit", () => {
+		const s = setup();
+		controller = s.controller;
+		const onExit = vi.fn();
+		const label = () =>
+			(s.find("tutorial-continue-label") as Konva.Text).text();
+
+		s.controller.setExit({ label: "Back to level", onExit });
+		s.controller.start();
+		expect(label()).toBe("Back to level");
+		s.find("tutorial-continue").fire("click");
+		expect(onExit).toHaveBeenCalledTimes(1);
+		expect(s.onContinue).not.toHaveBeenCalled();
+
+		// The exit is used once; the next time (after the cutscene) it's the default again.
+		expect(label()).toBe(DEFAULT_BUTTON_LABEL);
+		s.controller.start();
+		press("Enter");
+		expect(s.onContinue).toHaveBeenCalledTimes(1);
+		expect(onExit).toHaveBeenCalledTimes(1);
+	});
+
+	it("drops the exit if the screen is left another way", () => {
+		const s = setup();
+		controller = s.controller;
+		const onExit = vi.fn();
+		s.controller.setExit({ label: "Back to level", onExit });
+		s.controller.start();
+		s.controller.stop();
+		s.controller.start();
+		press("Enter");
+		expect(onExit).not.toHaveBeenCalled();
+		expect(s.onContinue).toHaveBeenCalledTimes(1);
 	});
 
 	it("is hidden until shown", () => {

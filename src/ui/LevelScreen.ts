@@ -33,6 +33,7 @@ interface LevelScreenOptions {
   onNextLevel?: (level: LevelConfig) => void;
   onPreviousLevel?: (level: LevelConfig) => void;
   onMainMenu?: () => void;
+  onTutorial?: () => void;
 }
 
 const LEVEL_1_CONFIG: LevelConfig = {
@@ -70,6 +71,7 @@ export class LevelScreen {
   private readonly onNextLevel?: (level: LevelConfig) => void;
   private readonly onPreviousLevel?: (level: LevelConfig) => void;
   private readonly onMainMenu?: () => void;
+  private readonly onTutorial?: () => void;
   private readonly controls = new AbortController();
 
   // Minigame timer settings
@@ -87,6 +89,7 @@ export class LevelScreen {
     this.onNextLevel = options.onNextLevel;
     this.onPreviousLevel = options.onPreviousLevel;
     this.onMainMenu = options.onMainMenu;
+    this.onTutorial = options.onTutorial;
     this.timed = options.timed ?? false;
     this.durationSeconds =
       options.durationSeconds ?? DEFAULT_MINIGAME_DURATION_SECONDS;
@@ -265,6 +268,12 @@ export class LevelScreen {
     this.sideMenu = new SideMenu(this.controls.signal);
     document.getElementById('menu-btn')?.addEventListener('click', () => this.sideMenu.open(), options);
     document.getElementById('main-menu-btn')?.addEventListener('click', () => this.onMainMenu?.(), options);
+    // The level stays alive while the tutorial shows, so coming back keeps the board as it was.
+    document.getElementById('tutorial-btn')?.addEventListener('click', () => {
+      if (!this.onTutorial) return;
+      this.sideMenu.close();
+      this.onTutorial();
+    }, options);
 
     document.getElementById('next-level-btn')?.addEventListener('click', () => {
       const next = this.nextCatalogLevel();
