@@ -5,6 +5,11 @@ import { Level02XorBoardView } from './components/boards/Level02XorBoardView';
 import { Level03NandBoardView } from './components/boards/Level03NandBoardView';
 import { Level04NorBoardView } from './components/boards/Level04NorBoardView';
 import { Level05XnorBoardView } from './components/boards/Level05XnorBoardView';
+import { Level06ChoicesBoardView } from './components/boards/Level06ChoicesBoardView';
+import { Level07TiedBoardView } from './components/boards/Level07TiedBoardView';
+import { Level08MirrorBoardView } from './components/boards/Level08MirrorBoardView';
+import { Level09SharedBoardView } from './components/boards/Level09SharedBoardView';
+import { Level10FinaleBoardView } from './components/boards/Level10FinaleBoardView';
 import { SideMenu } from './components/SideMenu';
 import { GateInfoModal } from './components/GateInfoModal';
 import { createStore, type GameState, type GameStore } from '../state/store';
@@ -21,6 +26,11 @@ const LEVEL_BOARD_VIEWS: Record<string, new (options: BoardViewOptions) => Fixed
   level_03_nand: Level03NandBoardView,
   level_04_nor: Level04NorBoardView,
   level_05_xnor: Level05XnorBoardView,
+  level_06_choices: Level06ChoicesBoardView,
+  level_07_tied: Level07TiedBoardView,
+  level_08_mirror: Level08MirrorBoardView,
+  level_09_shared: Level09SharedBoardView,
+  level_10_finale: Level10FinaleBoardView,
 };
 
 const DEFAULT_MINIGAME_DURATION_SECONDS = 15;

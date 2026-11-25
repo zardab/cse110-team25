@@ -20,6 +20,8 @@ type KonvaScreenId =
   | "locateBreakerBox"
   | "gateGuess";
 
+const LAST_BREAKER_SCENE_LEVEL = 5;
+
 export class SceneController implements ScreenSwitcher {
   private stage: Konva.Stage;
   private layer = new Konva.Layer();
@@ -79,7 +81,6 @@ export class SceneController implements ScreenSwitcher {
     this.showKonvaScreen("menu");
   }
 
-  // Level Selector -> Flashlight cutscene
   private startLevelCutscene(levelId: string): void {
     const levelIndex = mainLevels.findIndex(
       (level) => level.id === levelId,
@@ -91,6 +92,11 @@ export class SceneController implements ScreenSwitcher {
     }
 
     const levelNumber = levelIndex + 1;
+
+    if (levelNumber > LAST_BREAKER_SCENE_LEVEL) {
+      this.openLevel(levelId);
+      return;
+    }
 
     this.breakerController.setLevel(
       levelNumber,
