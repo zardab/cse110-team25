@@ -1,12 +1,13 @@
 import Konva from 'konva';
 import type { LevelConfig, SignalState, GateType } from '../../types/circuit';
-import { addGateIcon, loadGateIcon } from './boards/gateIcons';
+import { addGateIcon, addSlotInfoButton, loadGateIcon, loadInfoIcon } from './boards/gateIcons';
 
 interface GameBoardViewOptions {
   container: HTMLDivElement;
   levelConfig: LevelConfig;
   onPlaceGate?: (slotId: string, gate: GateType) => void;
   onRemoveGate?: (slotId: string) => void;
+  onGateInfo?: (gate: GateType) => void;
 }
 
 interface Point { x: number; y: number }
@@ -105,6 +106,7 @@ export class GameBoardView {
       }));
     }
     const pendingIcons: string[] = [];
+    let needsInfoIcon = false;
     for (const [id, position] of this.slotPositions) {
       const gate = level.slots[id].assignedGate;
       const empty = gate === 'NULL';
@@ -119,8 +121,13 @@ export class GameBoardView {
           width: SLOT_WIDTH, height: SLOT_HEIGHT, align: 'center', verticalAlign: 'middle',
           text: 'DROP GATE', fontSize: 15, fontStyle: 'bold', fill: '#A1A1AA',
         }));
-      } else if (!addGateIcon(group, gate, SLOT_WIDTH, SLOT_HEIGHT)) {
-        pendingIcons.push(gate);
+      } else {
+        if (!addGateIcon(group, gate, SLOT_WIDTH, SLOT_HEIGHT)) {
+          pendingIcons.push(gate);
+        }
+        if (!addSlotInfoButton(group, SLOT_WIDTH, () => this.options.onGateInfo?.(gate))) {
+          needsInfoIcon = true;
+        }
       }
       group.on('click tap', () => {
         if (!empty) this.options.onRemoveGate?.(id);
@@ -129,8 +136,12 @@ export class GameBoardView {
     }
     this.layer.batchDraw();
 
-    if (pendingIcons.length > 0) {
-      void Promise.all([...new Set(pendingIcons)].map(loadGateIcon)).then(() => {
+    const pending = [
+      ...[...new Set(pendingIcons)].map(loadGateIcon),
+      ...(needsInfoIcon ? [loadInfoIcon()] : []),
+    ];
+    if (pending.length > 0) {
+      void Promise.all(pending).then(() => {
         if (!this.lastRender) return;
         this.render(this.lastRender.level, this.lastRender.wireStates);
       });

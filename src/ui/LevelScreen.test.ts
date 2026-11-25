@@ -84,6 +84,18 @@ describe('Main game level integration', () => {
       <button id="reset-btn"></button>
       <button id="undo-btn"></button>
       <button id="menu-btn"></button>
+      <div id="gate-info-overlay" hidden>
+        <div id="gate-info-modal">
+          <h2 class="gate-info-title"></h2>
+          <p class="gate-info-subtitle"></p>
+          <p class="gate-info-description"></p>
+          <p class="gate-info-fun-fact"></p>
+          <img class="gate-info-graphic" />
+          <div class="gate-info-input-labels"></div>
+          <div class="gate-info-truth"></div>
+          <button id="gate-info-dismiss"></button>
+        </div>
+      </div>
       <div id="game-sidebar" hidden>
         <button id="sidebar-close-btn"></button>
         <button id="difficulty-toggle" data-mode="EASY"></button>
@@ -228,6 +240,18 @@ describe('LevelScreen Logic', () => {
         <button id="restart-minigame-btn"></button>
       </div>
 
+      <div id="gate-info-overlay" hidden>
+        <div id="gate-info-modal">
+          <h2 class="gate-info-title"></h2>
+          <p class="gate-info-subtitle"></p>
+          <p class="gate-info-description"></p>
+          <p class="gate-info-fun-fact"></p>
+          <img class="gate-info-graphic" />
+          <div class="gate-info-input-labels"></div>
+          <div class="gate-info-truth"></div>
+          <button id="gate-info-dismiss"></button>
+        </div>
+      </div>
       <div id="game-sidebar" hidden>
         <div id="sidebar-backdrop"></div>
         <button id="sidebar-close-btn"></button>
@@ -331,6 +355,18 @@ describe('Timed minigame', () => {
         <button id="restart-minigame-btn"></button>
       </div>
 
+      <div id="gate-info-overlay" hidden>
+        <div id="gate-info-modal">
+          <h2 class="gate-info-title"></h2>
+          <p class="gate-info-subtitle"></p>
+          <p class="gate-info-description"></p>
+          <p class="gate-info-fun-fact"></p>
+          <img class="gate-info-graphic" />
+          <div class="gate-info-input-labels"></div>
+          <div class="gate-info-truth"></div>
+          <button id="gate-info-dismiss"></button>
+        </div>
+      </div>
       <div id="game-sidebar" hidden>
         <div id="sidebar-backdrop"></div>
         <button id="sidebar-close-btn"></button>
@@ -427,6 +463,18 @@ describe('Main Menu button', () => {
       <button id="reset-btn"></button>
       <button id="undo-btn"></button>
       <button id="menu-btn"></button>
+      <div id="gate-info-overlay" hidden>
+        <div id="gate-info-modal">
+          <h2 class="gate-info-title"></h2>
+          <p class="gate-info-subtitle"></p>
+          <p class="gate-info-description"></p>
+          <p class="gate-info-fun-fact"></p>
+          <img class="gate-info-graphic" />
+          <div class="gate-info-input-labels"></div>
+          <div class="gate-info-truth"></div>
+          <button id="gate-info-dismiss"></button>
+        </div>
+      </div>
       <div id="game-sidebar" hidden>
         <button id="sidebar-close-btn"></button>
         <button id="main-menu-btn"></button>
