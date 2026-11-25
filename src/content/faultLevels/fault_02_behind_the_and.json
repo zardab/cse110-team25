@@ -1,7 +1,6 @@
 {
   "id": "fault_02_behind_the_and",
   "title": "Behind the AND",
-  "briefing": "Z is always 0, so something is stuck at 0. But is it the XOR or the AND? From the outside they look the same. Attach a probe to see inside.",
   "primaryInputs": ["A", "B", "C"],
   "primaryOutputs": ["Z"],
   "slots": {
@@ -26,6 +25,5 @@
   },
   "faults": {"g_and": 0},
   "testBudget": 3,
-  "probeBudget": 1,
   "maxMistakes": 2
 }

@@ -1,8 +1,10 @@
 import Konva from 'konva';
 import type { FaultLevel } from '../content/faultLevelLoader';
 import type { View } from '../screenTypes';
-import type { FaultMap, StuckAt } from '../types/circuit';
+import type { Fault, FaultMap } from '../types/circuit';
+import { addGateIcon, loadGateIcon } from '../ui/components/boards/gateIcons';
 import type { Bit, Bits, TestRecord } from './faultFinder';
+import type { TutorialPrompt, TutorialTarget } from './faultTutorial';
 import { layoutCircuit, type Point } from './faultLayout';
 
 export type MessageTone = 'info' | 'hint' | 'good' | 'bad';
@@ -10,175 +12,294 @@ export type MessageTone = 'info' | 'hint' | 'good' | 'bad';
 /** Everything the screen shows. The controller builds it; the view only draws it. */
 export interface FaultFinderViewModel {
   readonly level: FaultLevel;
+  /** The badge in the board's top-left corner, e.g. "Level 2 / 5". */
+  readonly levelLabel: string;
+  /** The walkthrough callout on the practice board, or null in a real level. */
+  readonly tutorial: TutorialPrompt | null;
   readonly levelIndex: number;
   readonly levelCount: number;
   /** The switches as the player has them. */
   readonly inputs: Bits;
-  /** Every wire's value on a healthy board for these inputs. */
-  readonly expected: Bits;
-  /** The test that used these inputs, if one has run, so the circuit can show real readings. */
+  /** The test that used these inputs, if one has run. Only its measurements light the board. */
   readonly current: TestRecord | null;
-  readonly tests: readonly TestRecord[];
-  readonly probes: readonly string[];
-  readonly diagnosis: FaultMap;
+  /** How many gates are faulty on this level. */
+  readonly faultCount: number;
+  /** Slots the player has marked as faulty. */
+  readonly diagnosis: readonly string[];
   /** The real faults once the round is over, or null while playing. */
   readonly revealed: FaultMap | null;
   readonly testsLeft: number;
-  readonly probesLeft: number;
   readonly lives: number;
   readonly maxLives: number;
-  readonly suspects: number;
-  /** Fewest tests this level has been solved in before, or null. */
-  readonly best: number | null;
   readonly message: string;
   readonly tone: MessageTone;
   readonly playing: boolean;
   /** The button under the message: none while a round is in play. */
-  readonly action: 'next' | 'restart' | null;
+  /** 'finish' after the last level: back to the level list instead of another board. */
+  readonly action: 'next' | 'restart' | 'finish' | null;
+}
+
+/** One level's card on the level-select screen. */
+export interface FaultFinderLevelCard {
+  readonly title: string;
+  readonly faultCount: number;
+  readonly completed: boolean;
+}
+
+export interface FaultFinderSelectModel {
+  readonly levels: readonly FaultFinderLevelCard[];
 }
 
 export interface FaultFinderHandlers {
   readonly onToggleInput: (inputId: string) => void;
-  readonly onAttachProbe: (slotId: string) => void;
   readonly onMarkGate: (slotId: string) => void;
   readonly onRunTest: () => void;
   readonly onSubmit: () => void;
-  readonly onSelectTest: (index: number) => void;
+  /** Opens a level, from a level card or a dot in the top bar. */
   readonly onSelectLevel: (index: number) => void;
   readonly onAction: () => void;
   readonly onBack: () => void;
+  readonly onHowToPlay: () => void;
+  /** The callout's button: moves the walkthrough on, or ends it on the last step. */
+  readonly onTutorialNext: () => void;
+  readonly onSkipTutorial: () => void;
 }
 
 // Everything is laid out on a 960 × 600 board, then scaled to fit the screen.
 const BOARD = { width: 960, height: 600 };
-const FONT = 'Courier New, monospace';
+/** The same font stack as the main game (src/index.css). */
+const FONT = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
 
+// Colors from the main game's dark board and stylesheet, so the minigame looks like part of it.
 const COLOR = {
-  background: '#0B1020',
-  card: '#F9FAFB',
-  cardStroke: '#CBD5E1',
-  panel: '#111827',
-  panelStroke: '#374151',
-  text: '#F9FAFB',
-  dim: '#9CA3AF',
-  ink: '#1F2937',
-  wireOff: '#CBD5E1',
+  page: '#09090B',
+  board: '#18181B',
+  surface: '#27272A',
+  border: '#3F3F46',
+  text: '#FAFAFA',
+  muted: '#A1A1AA',
+  label: '#71717A',
+  wireUnknown: '#3F3F46',
+  wireOff: '#52525B',
   wireOn: '#EAB308',
   bulbOn: '#FACC15',
-  bulbOff: '#E5E7EB',
-  gate: '#EFF6FF',
-  gateStroke: '#1D4ED8',
-  probe: '#7C3AED',
-  fault: '#DC2626',
-  faultFill: '#FEE2E2',
-  good: '#16A34A',
-  goodFill: '#DCFCE7',
-  missed: '#EA580C',
-  button: '#DC2626',
-  buttonUsed: '#374151',
-  heart: '#F87171',
+  bulbOff: '#3F3F46',
+  gateFill: '#1F2937',
+  gateStroke: '#3B82F6',
+  fault: '#EF4444',
+  faultFill: '#450A0A',
+  good: '#22C55E',
+  highlight: '#3B82F6',
+  goodFill: '#052E16',
+  missed: '#F97316',
 };
 
 const TONE: Record<MessageTone, string> = {
   info: COLOR.text,
-  hint: '#FBBF24',
+  hint: '#FACC15',
   good: '#4ADE80',
   bad: '#F87171',
 };
 
-const CARD = { x: 40, y: 96, width: 580, height: 300 };
-const LOG = { x: 640, y: 96, width: 280, height: 300 };
-const GATE = { width: 72, height: 44 };
-const PIN_GAP = 11;
-const PROBE_OFFSET = 24;
+const ALL_GATES = ['AND', 'OR', 'NOT', 'XOR', 'NAND', 'NOR', 'XNOR'] as const;
+
+/** The board card, like the main game's: it fills everything between the top bar and the controls. */
+const CARD = { x: 0, y: 50, width: BOARD.width, height: 478 };
+const GATE = { width: 120, height: 72 };
+const PIN_GAP = 18;
+/** Length of the stub drawn from each gate's output before its wire branches off. */
+const OUTPUT_STUB = 20;
+
+type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'icon';
 
 /**
- * FaultFinderView - Draws the "Fault Finder" minigame: the circuit under test with its
- * switches, gates, probe pads and bulbs, the log of tests run, and the controls.
+ * FaultFinderView - Draws the "Fault Finder" minigame in the main game's layout: a slim top
+ * bar (back, level dots), one board card holding the circuit and the number of faulty
+ * gates, and the controls underneath.
  */
 export class FaultFinderView implements View {
   private readonly group = new Konva.Group({ visible: false });
   private readonly board = new Konva.Group();
+  private lastModel: FaultFinderViewModel | null = null;
 
   constructor(width: number, height: number, private readonly handlers: FaultFinderHandlers) {
-    this.group.add(new Konva.Rect({ width, height, fill: COLOR.background }));
+    this.group.add(new Konva.Rect({ width, height, fill: COLOR.page }));
     const margin = 16;
     const scale = Math.min((width - margin * 2) / BOARD.width, (height - margin * 2) / BOARD.height, 1.5);
     this.board.scale({ x: scale, y: scale });
     this.board.position({ x: (width - BOARD.width * scale) / 2, y: (height - BOARD.height * scale) / 2 });
     this.group.add(this.board);
+
+    // Gate icons load once; redraw when they arrive so placeholders are swapped for them.
+    void Promise.all(ALL_GATES.map(loadGateIcon))
+      .then(() => { if (this.lastModel) this.render(this.lastModel); })
+      .catch(() => { /* Keep the text labels if the icons can't load. */ });
   }
 
-  render(model: FaultFinderViewModel): void {
-    // The node under the pointer may be replaced without a mouseleave, so reset the cursor.
+  /** The level list: one card per level with its fault count and whether it's solved. */
+  renderSelect(model: FaultFinderSelectModel): void {
+    this.lastModel = null;
     this.setCursor('default');
     this.board.destroyChildren();
-    this.drawHeader(model);
-    this.drawCircuit(model);
-    this.drawLog(model);
-    this.board.add(new Konva.Text({
-      name: 'message', x: 40, y: 406, width: BOARD.width - 80, align: 'center',
-      text: model.message, fontSize: 17, fontFamily: FONT, fill: TONE[model.tone], lineHeight: 1.3,
+
+    this.board.add(this.button({
+      name: 'back-button', x: 0, y: 2, width: 40, height: 36, label: '←', fontSize: 22,
+      onClick: this.handlers.onBack, variant: 'icon',
     }));
-    this.drawControls(model);
+    this.board.add(new Konva.Text({
+      x: 0, y: 4, width: BOARD.width, align: 'center', text: 'Fault Finder',
+      fontSize: 26, fontStyle: 'bold', fontFamily: FONT, fill: COLOR.text, listening: false,
+    }));
+    const solved = model.levels.filter((level) => level.completed).length;
+    const total = badge('solved-count', `${solved} / ${model.levels.length} solved`, BOARD.width, 4, 'right');
+    total.setAttr('solved', solved);
+    this.board.add(total);
+
+    const card = new Konva.Group({ x: CARD.x, y: CARD.y });
+    card.add(new Konva.Rect({
+      width: CARD.width, height: CARD.height, cornerRadius: 24, fill: COLOR.board,
+      shadowColor: 'black', shadowOpacity: 0.25, shadowBlur: 10, shadowOffsetY: 2,
+    }));
+    const tile = { width: 160, height: 230, gap: 20 };
+    const rowWidth = model.levels.length * tile.width + (model.levels.length - 1) * tile.gap;
+    model.levels.forEach((level, index) => {
+      card.add(this.drawLevelTile(level, index, {
+        x: (CARD.width - rowWidth) / 2 + index * (tile.width + tile.gap),
+        y: (CARD.height - tile.height) / 2, width: tile.width, height: tile.height,
+      }));
+    });
+    this.board.add(card);
+    this.board.add(this.button({
+      name: 'how-to-play-button', x: (BOARD.width - 200) / 2, y: CARD.y + CARD.height + 16, width: 200, height: 50,
+      label: 'How to Play', fontSize: 16, variant: 'secondary', onClick: this.handlers.onHowToPlay,
+    }));
     this.group.getLayer()?.batchDraw();
   }
 
-  private drawHeader(model: FaultFinderViewModel): void {
-    this.board.add(this.button({
-      name: 'back-button', x: 0, y: 0, width: 110, height: 38, label: '← BACK',
-      onClick: this.handlers.onBack, fill: 'transparent', stroke: COLOR.dim,
+  private drawLevelTile(
+    level: FaultFinderLevelCard, index: number, box: { x: number; y: number; width: number; height: number },
+  ): Konva.Group {
+    const group = new Konva.Group({ name: `level-card-${index}`, x: box.x, y: box.y });
+    const frame = new Konva.Rect({
+      width: box.width, height: box.height, cornerRadius: 16, fill: COLOR.page,
+      stroke: level.completed ? COLOR.good : COLOR.surface, strokeWidth: 1.5,
+    });
+    group.add(frame);
+    group.add(new Konva.Text({
+      x: 0, y: 26, width: box.width, align: 'center', text: String(index + 1),
+      fontSize: 44, fontStyle: 'bold', fontFamily: FONT, fill: COLOR.text,
     }));
-    // The title spans the full board and overlaps the buttons, so it must not take pointer events.
-    this.board.add(new Konva.Text({
-      x: 0, y: 8, width: BOARD.width, align: 'center', text: 'FAULT FINDER',
-      fontSize: 34, fontStyle: 'bold', fontFamily: FONT, fill: COLOR.text, listening: false,
+    group.add(new Konva.Text({
+      x: 12, y: 88, width: box.width - 24, height: 44, align: 'center', verticalAlign: 'middle',
+      text: level.title, fontSize: 15, fontStyle: 'bold', fontFamily: FONT, fill: COLOR.muted, lineHeight: 1.25,
     }));
-    this.board.add(new Konva.Text({
-      name: 'level-title', x: 0, y: 50, width: BOARD.width, align: 'center', fontSize: 15, fontFamily: FONT,
-      fill: COLOR.dim, listening: false,
-      text: `LEVEL ${model.levelIndex + 1}: ${model.level.title.toUpperCase()}`,
+    group.add(new Konva.Text({
+      x: 0, y: 146, width: box.width, align: 'center', wrap: 'none',
+      text: `${level.faultCount} faulty gate${level.faultCount === 1 ? '' : 's'}`,
+      fontSize: 13, fontStyle: 'bold', fontFamily: FONT, fill: COLOR.fault,
     }));
-
-    // Level strip: one small square per level, the current one lit.
-    const size = 30;
-    const gap = 6;
-    const stripX = BOARD.width - model.levelCount * (size + gap) + gap;
-    for (let index = 0; index < model.levelCount; index += 1) {
-      const current = index === model.levelIndex;
-      this.board.add(this.button({
-        name: `level-button-${index}`, x: stripX + index * (size + gap), y: 4, width: size, height: size,
-        label: String(index + 1), fontSize: 14,
-        fill: current ? COLOR.wireOn : 'transparent', stroke: current ? undefined : COLOR.panelStroke,
-        textColor: current ? 'black' : COLOR.dim,
-        onClick: current ? undefined : () => this.handlers.onSelectLevel(index),
+    if (level.completed) {
+      group.add(new Konva.Rect({ x: (box.width - 92) / 2, y: 180, width: 92, height: 26, cornerRadius: 13, fill: COLOR.goodFill }));
+      group.add(new Konva.Text({
+        x: 0, y: 186, width: box.width, align: 'center', text: '✓ Solved', wrap: 'none',
+        fontSize: 13, fontStyle: 'bold', fontFamily: FONT, fill: COLOR.good,
       }));
     }
+    group.setAttr('completed', level.completed);
+    onPress(group, () => this.handlers.onSelectLevel(index));
+    group.on('mouseenter', () => { frame.stroke(COLOR.gateStroke); group.getLayer()?.batchDraw(); });
+    group.on('mouseleave', () => {
+      frame.stroke(level.completed ? COLOR.good : COLOR.surface);
+      group.getLayer()?.batchDraw();
+    });
+    return group;
+  }
 
-    const hearts = '♥'.repeat(model.lives) + '♡'.repeat(Math.max(0, model.maxLives - model.lives));
-    const best = model.best === null ? '' : `   BEST ${model.best}`;
-    this.board.add(new Konva.Text({
-      name: 'status', x: BOARD.width - 480, y: 46, width: 380, align: 'right', fontFamily: FONT, fontSize: 14,
-      text: `TESTS ${model.testsLeft}   PROBES ${model.probesLeft}${best}`, fill: COLOR.dim, listening: false,
+  render(model: FaultFinderViewModel): void {
+    this.lastModel = model;
+    // The node under the pointer may be replaced without a mouseleave, so reset the cursor.
+    this.setCursor('default');
+    this.board.destroyChildren();
+    this.drawTopBar(model);
+    this.drawCircuit(model);
+    this.drawControls(model);
+    if (model.tutorial) this.drawTutorial(model.tutorial);
+    this.group.getLayer()?.batchDraw();
+  }
+
+  /** Like the main game's top nav: back on the left, level dots in the middle. */
+  private drawTopBar(model: FaultFinderViewModel): void {
+    this.board.add(this.button({
+      name: 'back-button', x: 0, y: 2, width: 40, height: 36, label: '←', fontSize: 22,
+      onClick: this.handlers.onBack, variant: 'icon',
     }));
-    this.board.add(new Konva.Text({
-      name: 'lives', x: BOARD.width - 90, y: 42, width: 90, align: 'right', text: hearts, fontSize: 20,
-      fill: COLOR.heart, listening: false,
-    }));
+    // The practice board isn't a level: no level dots, just a way out.
+    if (model.tutorial) {
+      if (model.tutorial.button !== 'Start Playing') {
+        this.board.add(this.button({
+          name: 'skip-tutorial-button', x: BOARD.width - 90, y: 2, width: 90, height: 36, label: 'Skip',
+          fontSize: 14, variant: 'secondary', onClick: this.handlers.onSkipTutorial,
+        }));
+      }
+      return;
+    }
+
+    // Level dots, like the main game's progress dots: hollow rings, the current one filled.
+    const spacing = 28;
+    const startX = BOARD.width / 2 - ((model.levelCount - 1) * spacing) / 2;
+    for (let index = 0; index < model.levelCount; index += 1) {
+      const current = index === model.levelIndex;
+      const dot = new Konva.Group({ name: `level-button-${index}`, x: startX + index * spacing, y: 20 });
+      if (current) dot.add(new Konva.Circle({ radius: 11, stroke: COLOR.text, strokeWidth: 2 }));
+      dot.add(new Konva.Circle({ radius: 7, stroke: COLOR.text, strokeWidth: 2, fill: current ? COLOR.text : COLOR.page }));
+      // A bigger invisible target, so the small dots are easy to click.
+      dot.add(new Konva.Circle({ radius: 13, fill: 'transparent' }));
+      if (!current) onPress(dot, () => this.handlers.onSelectLevel(index));
+      this.board.add(dot);
+    }
+
   }
 
   private drawCircuit(model: FaultFinderViewModel): void {
-    const { level, expected, current, probes, diagnosis, revealed } = model;
+    const { level, current, diagnosis, revealed } = model;
     const card = new Konva.Group({ x: CARD.x, y: CARD.y });
     card.add(new Konva.Rect({
-      width: CARD.width, height: CARD.height, cornerRadius: 16, fill: COLOR.card, stroke: COLOR.cardStroke, strokeWidth: 2,
+      width: CARD.width, height: CARD.height, cornerRadius: 24, fill: COLOR.board,
+      shadowColor: 'black', shadowOpacity: 0.25, shadowBlur: 10, shadowOffsetY: 2,
     }));
-    card.add(new Konva.Text({
-      x: 20, y: 12, fontSize: 13, fontFamily: FONT, fill: COLOR.dim, listening: false,
-      text: current ? 'SHOWING MEASURED VALUES' : 'SHOWING DESIGN VALUES (NOT TESTED YET)',
+    // Top-left badge, like the main game's level badge.
+    card.add(badge('level-title', model.levelLabel, 20, 20, 'left'));
+    if (!model.tutorial) card.add(guessesBadge(model.lives, model.maxLives, CARD.width - 20, 20));
+
+    // How many gates are faulty: the one thing the player must know, so it gets the top centre.
+    const count = model.faultCount;
+    const faultText = new Konva.Text({
+      name: 'fault-count', text: `${count} FAULTY GATE${count === 1 ? '' : 'S'}`,
+      fontSize: 20, fontStyle: 'bold', fontFamily: FONT, fill: COLOR.fault, letterSpacing: 1, wrap: 'none',
+    });
+    const faultWidth = faultText.width() + 40;
+    faultText.position({ x: 20, y: (40 - faultText.height()) / 2 });
+    const faultBadge = new Konva.Group({
+      name: 'fault-badge', x: (CARD.width - faultWidth) / 2, y: 16, listening: false,
+    });
+    faultBadge.add(new Konva.Rect({
+      width: faultWidth, height: 40, cornerRadius: 10, fill: COLOR.faultFill, stroke: COLOR.fault, strokeWidth: 1.5,
+    }), faultText);
+    card.add(faultBadge);
+
+    // Short outcome messages only (wrong guess, solved); the walkthrough's callout replaces them.
+    if (!model.tutorial) card.add(new Konva.Text({
+      name: 'message', x: 40, y: CARD.height - 40, width: CARD.width - 80, align: 'center',
+      text: model.message, fontSize: 17, fontStyle: 'bold', fontFamily: FONT, fill: TONE[model.tone],
     }));
 
-    const layout = layoutCircuit(level, { left: 70, right: 520, top: 40, bottom: 240 });
+    // Wires light up only from a test of the faulty board; until then every wire is unknown.
+    // The healthy design's values are never shown.
+    const known = (wireId: string): Bit | null => current?.wires[wireId] ?? null;
+
+    // Leave room at the bottom of the card for the walkthrough's callout.
+    const bottom = CARD.height - (model.tutorial ? 120 : 40);
+    const layout = layoutCircuit(level, { left: 120, right: CARD.width - 90, top: 60, bottom });
     const gateIndex = new Map(level.executionOrder.map((slotId, index) => [slotId, index]));
     const outputOf = (slotId: string): Point => {
       const { x, y } = layout.gates[slotId];
@@ -186,12 +307,12 @@ export class FaultFinderView implements View {
     };
     const sourcePoint = (source: { sourceType: string; sourceId: string }): Point =>
       source.sourceType === 'PRIMARY_INPUT'
-        ? { x: layout.inputs[source.sourceId].x + 28, y: layout.inputs[source.sourceId].y }
-        : { x: outputOf(source.sourceId).x + PROBE_OFFSET + 10, y: outputOf(source.sourceId).y };
-    const sourceValue = (source: { sourceType: string; sourceId: string }): Bit =>
+        ? { x: layout.inputs[source.sourceId].x + 17, y: layout.inputs[source.sourceId].y }
+        : { x: outputOf(source.sourceId).x + OUTPUT_STUB, y: outputOf(source.sourceId).y };
+    const sourceValue = (source: { sourceType: string; sourceId: string }): Bit | null =>
       source.sourceType === 'PRIMARY_INPUT'
-        ? expected[source.sourceId]
-        : expected[level.slots[source.sourceId].outputWireId];
+        ? known(source.sourceId)
+        : known(level.slots[source.sourceId].outputWireId);
 
     // Wires first, so gates and switches sit on top of them.
     let wireIndex = 0;
@@ -210,12 +331,12 @@ export class FaultFinderView implements View {
       const producer = Object.values(level.slots).find((slot) => slot.outputWireId === outputId)!;
       const from = sourcePoint({ sourceType: 'SLOT_OUTPUT', sourceId: producer.id });
       const bulb = layout.outputs[outputId];
-      card.add(wire(route(from, { x: bulb.x - 18, y: bulb.y }, wireIndex), expected[outputId]));
+      card.add(wire(route(from, { x: bulb.x - 22, y: bulb.y }, wireIndex), known(outputId)));
       wireIndex += 1;
     }
     for (const slotId of level.executionOrder) {
       const out = outputOf(slotId);
-      card.add(wire([out.x, out.y, out.x + PROBE_OFFSET + 10, out.y], expected[level.slots[slotId].outputWireId]));
+      card.add(wire([out.x, out.y, out.x + OUTPUT_STUB, out.y], known(level.slots[slotId].outputWireId)));
     }
 
     for (const inputId of level.primaryInputs) {
@@ -224,33 +345,27 @@ export class FaultFinderView implements View {
     for (const slotId of level.executionOrder) {
       const label = `G${gateIndex.get(slotId)! + 1}`;
       card.add(this.drawGate(slotId, label, level, layout.gates[slotId], diagnosis, revealed, model.playing));
-      card.add(this.drawProbePad(slotId, label, outputOf(slotId), model, probes.includes(slotId)));
     }
     for (const outputId of level.primaryOutputs) {
-      card.add(this.drawBulb(outputId, layout.outputs[outputId], expected[outputId], current?.actual[outputId] ?? null));
+      card.add(this.drawBulb(outputId, layout.outputs[outputId], known(outputId)));
     }
 
-    card.add(new Konva.Text({
-      x: 20, y: CARD.height - 30, width: CARD.width - 40, fontSize: 12, fontFamily: FONT, fill: COLOR.dim,
-      listening: false, align: 'center',
-      text: 'Click a switch to set it · click a gate to mark it STUCK 0 / STUCK 1 · click a ◌ pad to attach a probe',
-    }));
     this.board.add(card);
   }
 
   private drawSwitch(inputId: string, at: Point, value: Bit, playing: boolean): Konva.Group {
-    const group = new Konva.Group({ name: `switch-${inputId}`, x: at.x - 60, y: at.y - 13 });
+    const group = new Konva.Group({ name: `switch-${inputId}`, x: at.x - 80, y: at.y - 14, scale: { x: 1.1, y: 1.1 } });
     group.add(new Konva.Text({
-      x: 0, y: 4, width: 28, text: inputId, fontSize: 18, fontStyle: 'bold', fontFamily: FONT, fill: COLOR.ink,
+      x: 0, y: 5, width: 24, text: inputId, fontSize: 18, fontStyle: 'bold', fontFamily: FONT, fill: COLOR.text,
     }));
     group.add(new Konva.Rect({
-      x: 34, y: 0, width: 54, height: 26, cornerRadius: 13,
-      fill: value ? COLOR.wireOn : COLOR.wireOff, stroke: COLOR.cardStroke, strokeWidth: 1,
+      x: 30, y: 0, width: 58, height: 28, cornerRadius: 14,
+      fill: value ? COLOR.wireOn : COLOR.surface, stroke: COLOR.border, strokeWidth: 1,
     }));
-    group.add(new Konva.Circle({ x: value ? 75 : 47, y: 13, radius: 10, fill: COLOR.card, stroke: COLOR.ink, strokeWidth: 1 }));
+    group.add(new Konva.Circle({ x: value ? 74 : 44, y: 14, radius: 10, fill: COLOR.text }));
     group.add(new Konva.Text({
-      x: 34, y: 5, width: 54, align: 'center', text: value ? '1   ' : '   0', fontSize: 14, fontStyle: 'bold',
-      fontFamily: FONT, fill: COLOR.ink,
+      x: 30, y: 7, width: 58, align: 'center', text: value ? '1    ' : '    0', fontSize: 14, fontStyle: 'bold',
+      fontFamily: FONT, fill: value ? COLOR.board : COLOR.muted,
     }));
     group.setAttr('value', value);
     if (playing) onPress(group, () => this.handlers.onToggleInput(inputId));
@@ -259,193 +374,183 @@ export class FaultFinderView implements View {
 
   private drawGate(
     slotId: string, label: string, level: FaultLevel, at: Point,
-    diagnosis: FaultMap, revealed: FaultMap | null, playing: boolean,
+    diagnosis: readonly string[], revealed: FaultMap | null, playing: boolean,
   ): Konva.Group {
     const group = new Konva.Group({ name: `gate-${slotId}`, x: at.x - GATE.width / 2, y: at.y - GATE.height / 2 });
-    const mark: StuckAt | undefined = diagnosis[slotId];
-    const truth: StuckAt | undefined = revealed?.[slotId];
+    const marked = diagnosis.includes(slotId);
+    const truth: Fault | undefined = revealed?.[slotId];
     // While playing, a mark is red. Once revealed, real faults are green and a wrong mark is orange.
     let stroke = COLOR.gateStroke;
-    let fill = COLOR.gate;
-    let badge: string | null = null;
+    let fill = COLOR.gateFill;
+    let badgeText: string | null = null;
     let badgeColor = COLOR.fault;
     if (revealed) {
       if (truth !== undefined) {
-        stroke = COLOR.good; fill = COLOR.goodFill; badge = `STUCK ${truth}`; badgeColor = COLOR.good;
-      } else if (mark !== undefined) {
-        stroke = COLOR.missed; badge = 'OK'; badgeColor = COLOR.missed;
+        stroke = COLOR.good; fill = COLOR.goodFill; badgeColor = COLOR.good;
+        badgeText = typeof truth === 'number' ? `STUCK ${truth}` : `LIKE ${truth}`;
+      } else if (marked) {
+        stroke = COLOR.missed; badgeText = 'OK'; badgeColor = COLOR.missed;
       }
-    } else if (mark !== undefined) {
-      stroke = COLOR.fault; fill = COLOR.faultFill; badge = `STUCK ${mark}`;
+    } else if (marked) {
+      stroke = COLOR.fault; fill = COLOR.faultFill; badgeText = 'FAULTY';
     }
     group.add(new Konva.Rect({
-      width: GATE.width, height: GATE.height, cornerRadius: 8, fill, stroke, strokeWidth: 2.5,
+      width: GATE.width, height: GATE.height, cornerRadius: 12, fill, stroke, strokeWidth: marked || truth !== undefined ? 3 : 2,
     }));
-    group.add(new Konva.Text({
-      width: GATE.width, height: GATE.height - 10, align: 'center', verticalAlign: 'middle',
-      text: level.slots[slotId].assignedGate, fontSize: 17, fontStyle: 'bold', fontFamily: FONT, fill: COLOR.ink,
-    }));
-    group.add(new Konva.Text({
-      x: 0, y: GATE.height - 14, width: GATE.width, align: 'center', text: label, fontSize: 10, fontFamily: FONT, fill: COLOR.dim,
-    }));
-    if (badge) {
-      group.add(new Konva.Rect({ x: -6, y: -14, width: GATE.width + 12, height: 18, cornerRadius: 9, fill: badgeColor }));
+    const gate = level.slots[slotId].assignedGate;
+    if (!addGateIcon(group, gate, GATE.width, GATE.height)) {
       group.add(new Konva.Text({
-        name: 'badge', x: -6, y: -12, width: GATE.width + 12, align: 'center', text: badge, fontSize: 11,
-        fontStyle: 'bold', fontFamily: FONT, fill: 'white',
+        width: GATE.width, height: GATE.height, align: 'center', verticalAlign: 'middle',
+        text: gate, fontSize: 16, fontStyle: 'bold', fontFamily: FONT, fill: COLOR.gateStroke,
       }));
     }
-    group.setAttr('mark', mark ?? null);
+    // The G-number sits inside the box's corner, where wires and badges can't cover it.
+    group.add(new Konva.Text({
+      x: 8, y: 6, text: label, fontSize: 11, fontStyle: 'bold', fontFamily: FONT, fill: COLOR.muted, wrap: 'none',
+    }));
+    if (badgeText) {
+      group.add(new Konva.Rect({ x: -4, y: -12, width: GATE.width + 8, height: 20, cornerRadius: 10, fill: badgeColor }));
+      group.add(new Konva.Text({
+        name: 'badge', x: -4, y: -8, width: GATE.width + 8, align: 'center', text: badgeText, fontSize: 11,
+        fontStyle: 'bold', fontFamily: FONT, fill: 'white', letterSpacing: 0.5, wrap: 'none',
+      }));
+    }
+    group.setAttr('marked', marked);
     if (playing) onPress(group, () => this.handlers.onMarkGate(slotId));
     return group;
   }
 
-  private drawProbePad(slotId: string, label: string, out: Point, model: FaultFinderViewModel, attached: boolean): Konva.Group {
-    const group = new Konva.Group({ name: `probe-${slotId}`, x: out.x + PROBE_OFFSET, y: out.y });
-    const expected = model.expected[model.level.slots[slotId].outputWireId];
-    const reading = model.current?.readings[slotId];
-    if (attached) {
-      group.add(new Konva.Circle({ radius: 8, fill: COLOR.probe, stroke: 'white', strokeWidth: 2 }));
-      const measured = reading !== undefined;
-      const wrong = measured && reading !== expected;
-      group.add(new Konva.Text({
-        name: 'reading', x: -30, y: -30, width: 60, align: 'center', fontFamily: FONT, fontStyle: 'bold',
-        fontSize: 13, fill: wrong ? COLOR.fault : COLOR.probe,
-        text: measured ? `${label}=${reading}${wrong ? ' ✗' : ''}` : `${label}=?`,
-      }));
-    } else if (model.playing && model.probesLeft > 0) {
-      group.add(new Konva.Circle({ radius: 8, fill: 'white', stroke: COLOR.probe, strokeWidth: 2, dash: [3, 3] }));
-      onPress(group, () => this.handlers.onAttachProbe(slotId));
-    }
-    group.setAttr('attached', attached);
-    return group;
-  }
-
-  private drawBulb(outputId: string, at: Point, expected: Bit, actual: Bit | null): Konva.Group {
+  /** A bulb shows only what a test measured; before that it is dark and reads "?". */
+  private drawBulb(outputId: string, at: Point, actual: Bit | null): Konva.Group {
     const group = new Konva.Group({ name: `bulb-${outputId}`, x: at.x, y: at.y });
-    const shown = actual ?? expected;
-    const wrong = actual !== null && actual !== expected;
-    if (shown) group.add(new Konva.Circle({ radius: 24, fill: '#FEF08A', opacity: 0.6 }));
+    if (actual === 1) group.add(new Konva.Circle({ radius: 30, fill: '#FEF08A', opacity: 0.35 }));
     group.add(new Konva.Circle({
-      radius: 17, fill: shown ? COLOR.bulbOn : COLOR.bulbOff,
-      stroke: wrong ? COLOR.fault : actual === null ? COLOR.cardStroke : COLOR.ink,
-      strokeWidth: wrong ? 3 : 1.5, dash: actual === null ? [4, 3] : [],
+      radius: 22, fill: actual === 1 ? COLOR.bulbOn : COLOR.bulbOff,
+      stroke: actual === null ? COLOR.border : undefined, strokeWidth: 1.5, dash: actual === null ? [4, 3] : [],
     }));
-    group.add(new Konva.Text({ text: '💡', fontSize: 18, offsetX: 9, offsetY: 9 }));
+    group.add(new Konva.Text({ text: '💡', fontSize: 18, offsetX: 9, offsetY: 9, opacity: actual === 1 ? 1 : 0.5 }));
     group.add(new Konva.Text({
-      name: 'bulb-label', x: -60, y: 24, width: 120, align: 'center', fontFamily: FONT, fontStyle: 'bold', fontSize: 12,
-      fill: wrong ? COLOR.fault : COLOR.ink,
-      text: actual === null ? `${outputId} should be ${expected}` : wrong ? `${outputId}=${actual} ✗ want ${expected}` : `${outputId}=${actual} ✓`,
+      name: 'bulb-label', x: -60, y: 30, width: 120, align: 'center', fontFamily: FONT, fontStyle: 'bold', fontSize: 13,
+      fill: actual === 1 ? COLOR.bulbOn : COLOR.muted,
+      text: `${outputId} = ${actual ?? '?'}`,
     }));
     group.setAttr('actual', actual);
     return group;
   }
 
-  private drawLog(model: FaultFinderViewModel): void {
-    const { level, tests, current } = model;
-    const panel = new Konva.Group({ x: LOG.x, y: LOG.y });
-    panel.add(new Konva.Rect({
-      width: LOG.width, height: LOG.height, cornerRadius: 16, fill: COLOR.panel, stroke: COLOR.panelStroke, strokeWidth: 2,
-    }));
-    panel.add(new Konva.Text({
-      x: 20, y: 16, text: 'TEST LOG', fontSize: 16, fontStyle: 'bold', fontFamily: FONT, fill: COLOR.text,
-    }));
-    panel.add(new Konva.Text({
-      x: 20, y: 40, text: `#   ${level.primaryInputs.join('')}   ${level.primaryOutputs.join(' ')}   PROBES`,
-      fontSize: 12, fontFamily: FONT, fill: COLOR.dim,
-    }));
-
-    const gateIndex = new Map(level.executionOrder.map((slotId, index) => [slotId, index]));
-    tests.forEach((test, index) => {
-      const selected = test === current;
-      const row = new Konva.Group({ name: `test-row-${index}`, x: 10, y: 60 + index * 30 });
-      row.add(new Konva.Rect({
-        width: LOG.width - 20, height: 26, cornerRadius: 6,
-        fill: selected ? '#1E293B' : 'transparent', stroke: selected ? COLOR.wireOn : 'transparent',
-      }));
-      const inputs = level.primaryInputs.map((id) => test.inputs[id]).join('');
-      row.add(new Konva.Text({
-        x: 10, y: 6, text: `${index + 1}   ${inputs}   `, fontSize: 13, fontFamily: FONT, fill: COLOR.text,
-      }));
-      // Each output is its own text so a mismatch can be coloured on its own.
-      let x = 10 + (4 + inputs.length + 3) * 7.8;
-      for (const outputId of level.primaryOutputs) {
-        const wrong = test.actual[outputId] !== test.expected[outputId];
-        row.add(new Konva.Text({
-          x, y: 6, text: `${test.actual[outputId]}${wrong ? '!' : ' '}`, fontSize: 13, fontFamily: FONT, fontStyle: 'bold',
-          fill: wrong ? COLOR.heart : COLOR.text,
-        }));
-        x += (outputId.length + 1) * 7.8;
-      }
-      const readings = Object.entries(test.readings)
-        .map(([slotId, value]) => `G${gateIndex.get(slotId)! + 1}=${value}`).join(' ');
-      row.add(new Konva.Text({
-        x: x + 16, y: 6, text: readings, fontSize: 13, fontFamily: FONT, fill: '#C4B5FD',
-      }));
-      onPress(row, () => this.handlers.onSelectTest(index));
-      panel.add(row);
-    });
-
-    if (tests.length === 0) {
-      panel.add(new Konva.Text({
-        x: 20, y: 70, width: LOG.width - 40, fontSize: 13, fontFamily: FONT, fill: COLOR.dim, lineHeight: 1.4,
-        text: 'No tests yet. Set the switches and press RUN TEST. A ! marks an output that differs from the design.',
+  /**
+   * The walkthrough callout along the bottom of the board, plus a ring around whatever it
+   * talks about. The ring is drawn last so it sits on top, and ignores the pointer.
+   */
+  private drawTutorial(tutorial: TutorialPrompt): void {
+    const target = tutorial.target ? this.targetRect(tutorial.target) : null;
+    if (target) {
+      const pad = 8;
+      this.board.add(new Konva.Rect({
+        name: 'tutorial-highlight', x: target.x - pad, y: target.y - pad,
+        width: target.width + pad * 2, height: target.height + pad * 2, cornerRadius: 14,
+        stroke: COLOR.highlight, strokeWidth: 3, dash: [8, 5], listening: false,
+        shadowColor: COLOR.highlight, shadowBlur: 12, shadowOpacity: 0.6,
       }));
     }
-    panel.add(new Konva.Text({
-      name: 'suspects', x: 20, y: LOG.height - 30, width: LOG.width - 40, fontSize: 13, fontFamily: FONT,
-      fontStyle: 'bold', fill: model.suspects === 1 ? TONE.good : COLOR.wireOn,
-      text: `SUSPECTS LEFT: ${model.suspects}`,
+
+    const width = 780;
+    const height = 76;
+    const callout = new Konva.Group({
+      name: 'tutorial-callout', x: (BOARD.width - width) / 2, y: CARD.y + CARD.height - height - 16,
+    });
+    callout.add(new Konva.Rect({ width, height, cornerRadius: 14, fill: COLOR.surface, stroke: COLOR.highlight, strokeWidth: 1.5 }));
+    const buttonWidth = tutorial.button ? 150 : 0;
+    callout.add(new Konva.Text({
+      name: 'tutorial-text', x: 20, y: 0, width: width - 40 - (buttonWidth ? buttonWidth + 16 : 0), height,
+      verticalAlign: 'middle', text: tutorial.text, fontSize: 16, fontStyle: '500', fontFamily: FONT,
+      fill: COLOR.text, lineHeight: 1.35,
     }));
-    this.board.add(panel);
+    if (tutorial.button) {
+      callout.add(this.button({
+        name: 'tutorial-next-button', x: width - buttonWidth - 16, y: (height - 44) / 2, width: buttonWidth, height: 44,
+        label: tutorial.button, fontSize: 16, onClick: this.handlers.onTutorialNext,
+      }));
+    }
+    this.board.add(callout);
+  }
+
+  /** The area on the board covered by the nodes a callout points at. */
+  private targetRect(target: TutorialTarget): { x: number; y: number; width: number; height: number } | null {
+    const prefix: Record<TutorialTarget, string> = {
+      faults: 'fault-badge', switches: 'switch-', run: 'run-button', gates: 'gate-', submit: 'submit-button',
+    };
+    const nodes = this.board.find((node: Konva.Node) => node.name().startsWith(prefix[target]));
+    if (nodes.length === 0) return null;
+    const rects = nodes.map((node) => node.getClientRect({ relativeTo: this.board, skipShadow: true }));
+    const x = Math.min(...rects.map((rect) => rect.x));
+    const y = Math.min(...rects.map((rect) => rect.y));
+    return {
+      x, y,
+      width: Math.max(...rects.map((rect) => rect.x + rect.width)) - x,
+      height: Math.max(...rects.map((rect) => rect.y + rect.height)) - y,
+    };
   }
 
   private drawControls(model: FaultFinderViewModel): void {
-    const y = 470;
-    const canRun = model.playing && model.testsLeft > 0;
-    this.board.add(this.button({
-      name: 'run-button', x: 40, y, width: 260, height: 48, fontSize: 18,
-      label: model.testsLeft > 0 ? `RUN TEST (${model.testsLeft} left)` : 'NO TESTS LEFT',
-      fill: canRun ? COLOR.wireOn : COLOR.buttonUsed, textColor: canRun ? 'black' : COLOR.dim,
-      onClick: canRun ? this.handlers.onRunTest : undefined,
-    }));
-    const marks = Object.keys(model.diagnosis).length;
-    const canSubmit = model.playing && marks > 0;
-    this.board.add(this.button({
-      name: 'submit-button', x: 320, y, width: 300, height: 48, fontSize: 18,
-      label: `SUBMIT DIAGNOSIS (${marks} marked)`,
-      fill: canSubmit ? COLOR.button : COLOR.buttonUsed, textColor: canSubmit ? 'black' : COLOR.dim,
-      onClick: canSubmit ? this.handlers.onSubmit : undefined,
-    }));
-    const needed = Object.keys(model.level.faults).length;
-    this.board.add(new Konva.Text({
-      x: 640, y: y + 6, width: 280, fontSize: 13, fontFamily: FONT, fill: COLOR.dim, lineHeight: 1.3, listening: false,
-      text: `${needed} gate${needed === 1 ? ' is' : 's are'} stuck.\nMark exactly ${needed}, then submit.`,
-    }));
+    const y = CARD.y + CARD.height + 16;
+    const height = 50;
     if (model.action) {
       this.board.add(this.button({
-        name: 'action-button', x: (BOARD.width - 260) / 2, y: 536, width: 260, height: 46,
-        label: model.action === 'next' ? 'NEXT BOARD →' : 'TRY AGAIN', onClick: this.handlers.onAction,
+        name: 'action-button', x: (BOARD.width - 260) / 2, y, width: 260, height, fontSize: 17,
+        label: model.action === 'next' ? 'Next Board →' : model.action === 'finish' ? 'Back to Levels' : 'Try Again',
+        onClick: this.handlers.onAction,
       }));
+      return;
     }
+    const width = 260;
+    const gap = 16;
+    const left = (BOARD.width - width * 2 - gap) / 2;
+    const marks = model.diagnosis.length;
+    this.board.add(this.button({
+      name: 'run-button', x: left, y, width, height, fontSize: 17,
+      // The practice board has plenty of tests, so it doesn't count them.
+      label: model.tutorial ? 'Run Test' : model.testsLeft > 0 ? `Run Test  ·  ${model.testsLeft} left` : 'No Tests Left',
+      variant: 'primary', onClick: model.playing && model.testsLeft > 0 ? this.handlers.onRunTest : undefined,
+    }));
+    this.board.add(this.button({
+      name: 'submit-button', x: left + width + gap, y, width, height, fontSize: 17,
+      label: `Submit  ·  ${marks} / ${model.faultCount}`,
+      variant: 'danger', onClick: model.playing && marks > 0 ? this.handlers.onSubmit : undefined,
+    }));
   }
 
   private button(options: {
     name: string; x: number; y: number; width: number; height: number; label: string;
-    onClick?: () => void; fill?: string; stroke?: string; textColor?: string; fontSize?: number;
+    onClick?: () => void; variant?: ButtonVariant; fontSize?: number;
   }): Konva.Group {
-    const { name, x, y, width, height, label, onClick } = options;
+    const { name, x, y, width, height, label, onClick, variant = 'primary' } = options;
     const group = new Konva.Group({ name, x, y });
-    group.add(new Konva.Rect({
-      width, height, fill: options.fill ?? COLOR.button,
-      stroke: options.stroke, strokeWidth: options.stroke ? 2 : 0,
-    }));
+    // Primary matches the main game's light "Next Level" button; secondary its dark one.
+    // Icon buttons are bare like the main game's top-bar icons until hovered.
+    const fill = variant === 'primary' ? COLOR.text : variant === 'danger' ? COLOR.fault
+      : variant === 'icon' ? 'transparent' : COLOR.surface;
+    const textColor = variant === 'primary' ? COLOR.board : variant === 'icon' ? COLOR.muted : COLOR.text;
+    const rect = new Konva.Rect({ width, height, fill, cornerRadius: 8 });
+    group.add(rect);
     group.add(new Konva.Text({
       width, height, text: label, align: 'center', verticalAlign: 'middle', fontFamily: FONT, fontStyle: 'bold',
-      fontSize: options.fontSize ?? 16, fill: options.textColor ?? (options.fill === 'transparent' ? COLOR.text : 'black'),
+      fontSize: options.fontSize ?? 15, fill: textColor,
     }));
     group.setAttr('enabled', Boolean(onClick));
-    if (onClick) onPress(group, onClick);
+    // Buttons that can't be pressed right now fade out.
+    if (!onClick) group.opacity(0.35);
+    if (onClick) {
+      onPress(group, onClick);
+      group.on('mouseenter', () => {
+        if (variant === 'icon') rect.fill(COLOR.surface); else group.opacity(0.9);
+        group.getLayer()?.batchDraw();
+      });
+      group.on('mouseleave', () => {
+        if (variant === 'icon') rect.fill('transparent'); else group.opacity(1);
+        group.getLayer()?.batchDraw();
+      });
+    }
     return group;
   }
 
@@ -470,17 +575,60 @@ export class FaultFinderView implements View {
   }
 }
 
+
+/** A rounded dark badge, like the main game's level badge. The text node carries `name`. */
+function badge(name: string, text: string, x: number, y: number, anchor: 'left' | 'right'): Konva.Group {
+  const label = new Konva.Text({
+    name, text, x: 12, y: 8, fontSize: 14, fontStyle: 'bold', fontFamily: FONT, fill: COLOR.text,
+  });
+  const width = label.width() + 24;
+  const group = new Konva.Group({ x: anchor === 'left' ? x : x - width, y, listening: false });
+  group.add(new Konva.Rect({ width, height: 30, cornerRadius: 8, fill: COLOR.surface }), label);
+  return group;
+}
+
+/**
+ * Top-right badge mirroring the level badge: one pip per wrong guess allowed, filled while
+ * still available and hollow once spent, in the same style as the level dots. The last
+ * remaining guess turns red.
+ */
+function guessesBadge(left: number, total: number, right: number, y: number): Konva.Group {
+  const label = new Konva.Text({
+    text: 'Guesses', x: 12, y: 8, fontSize: 14, fontStyle: 'bold', fontFamily: FONT, fill: COLOR.text, wrap: 'none',
+  });
+  const pipGap = 16;
+  const width = 12 + label.width() + 12 + total * pipGap + 6;
+  const group = new Konva.Group({ name: 'lives', x: right - width, y, listening: false });
+  group.add(new Konva.Rect({ width, height: 30, cornerRadius: 8, fill: COLOR.surface }), label);
+  const color = left === 1 ? COLOR.fault : COLOR.text;
+  for (let index = 0; index < total; index += 1) {
+    const available = index < left;
+    group.add(new Konva.Circle({
+      name: available ? 'guess-left' : 'guess-used',
+      x: 12 + label.width() + 12 + index * pipGap + 5, y: 15, radius: 5,
+      fill: available ? color : 'transparent', stroke: available ? color : COLOR.muted, strokeWidth: 1.5,
+    }));
+  }
+  group.setAttr('lives', left);
+  return group;
+}
+
 /** An orthogonal path from `from` to `to`; the bend shifts a little per wire so parallel runs don't overlap. */
 function route(from: Point, to: Point, index: number): number[] {
   const bend = from.x + (to.x - from.x) * (0.35 + 0.1 * (index % 4));
   return [from.x, from.y, bend, from.y, bend, to.y, to.x, to.y];
 }
 
-function wire(points: number[], value: Bit): Konva.Line {
-  return new Konva.Line({
-    points, stroke: value ? COLOR.wireOn : COLOR.wireOff, strokeWidth: value ? 4 : 3, lineCap: 'round', lineJoin: 'round',
-    listening: false,
+/** A lit wire is a measured 1, a solid grey wire a measured 0, and a dashed wire is unknown. */
+function wire(points: number[], value: Bit | null): Konva.Line {
+  const line = new Konva.Line({
+    name: 'wire', points,
+    stroke: value === 1 ? COLOR.wireOn : value === 0 ? COLOR.wireOff : COLOR.wireUnknown,
+    strokeWidth: value === 1 ? 4 : value === 0 ? 3 : 2,
+    dash: value === null ? [6, 5] : [], lineCap: 'round', lineJoin: 'round', listening: false,
   });
+  line.setAttr('measured', value ?? 'unknown');
+  return line;
 }
 
 /** Clicks and taps call `action`; the pointer becomes a hand while over the node. */

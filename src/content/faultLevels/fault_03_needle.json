@@ -1,7 +1,6 @@
 {
   "id": "fault_03_needle",
   "title": "Needle in the Table",
-  "briefing": "This fault only shows up for a few input combinations. Random testing will burn your budget. Think about which inputs make each gate matter.",
   "primaryInputs": ["A", "B", "C", "D"],
   "primaryOutputs": ["Z"],
   "slots": {
@@ -33,8 +32,7 @@
       "assignedGate": "XOR"
     }
   },
-  "faults": {"g_and": 0},
+  "faults": {"g_or": "XOR"},
   "testBudget": 4,
-  "probeBudget": 1,
   "maxMistakes": 2
 }

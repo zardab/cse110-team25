@@ -1,7 +1,6 @@
 {
   "id": "fault_04_deep_chain",
   "title": "Deep Chain",
-  "briefing": "Three gates deep and five suspects. One probe and four tests. Place the probe where it splits the suspects in half.",
   "primaryInputs": ["A", "B", "C", "D"],
   "primaryOutputs": ["Z", "Y"],
   "slots": {
@@ -48,8 +47,7 @@
       "assignedGate": "AND"
     }
   },
-  "faults": {"g_nand": 1},
+  "faults": {"g_or": "AND"},
   "testBudget": 4,
-  "probeBudget": 1,
   "maxMistakes": 2
 }

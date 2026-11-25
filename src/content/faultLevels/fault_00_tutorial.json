@@ -1,0 +1,29 @@
+{
+  "id": "fault_00_tutorial",
+  "title": "Tutorial",
+  "primaryInputs": ["A", "B"],
+  "primaryOutputs": ["Y", "Z"],
+  "slots": {
+    "g_and": {
+      "id": "g_and",
+      "inputs": [
+        {"sourceType": "PRIMARY_INPUT", "sourceId": "A"},
+        {"sourceType": "PRIMARY_INPUT", "sourceId": "B"}
+      ],
+      "outputWireId": "Y",
+      "assignedGate": "AND"
+    },
+    "g_or": {
+      "id": "g_or",
+      "inputs": [
+        {"sourceType": "PRIMARY_INPUT", "sourceId": "A"},
+        {"sourceType": "PRIMARY_INPUT", "sourceId": "B"}
+      ],
+      "outputWireId": "Z",
+      "assignedGate": "OR"
+    }
+  },
+  "faults": {"g_and": 1},
+  "testBudget": 20,
+  "maxMistakes": 99
+}

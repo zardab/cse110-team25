@@ -297,6 +297,19 @@ describe('StorageAdapter', () => {
     expect(storage.data.get('unrelated-key')).toBe('keep')
   })
 
+  it('saves board-less summaries, keeping earned completion and best stars', () => {
+    const storage = new MemoryStorage()
+    const adapter = new StorageAdapter(storage, 'minigame')
+    expect(adapter.saveSummary('board_1', { completed: true, stars: 2 })).toBe(true)
+    expect(adapter.saveSummary('board_1', { completed: false, stars: 1 })).toBe(true)
+    expect(adapter.getProgress()).toEqual({ board_1: { completed: true, stars: 2 } })
+    expect(adapter.saveSummary('board_1', { completed: true, stars: 3 })).toBe(true)
+    expect(adapter.getProgress().board_1.stars).toBe(3)
+    expect(adapter.saveSummary(' ', { completed: true, stars: 1 })).toBe(false)
+    expect(adapter.saveSummary('board_1', { completed: true, stars: 4 })).toBe(false)
+    expect(storage.data.has(PROGRESS_STORAGE_KEY)).toBe(false)
+  })
+
   it('isolates custom storage keys', () => {
     const storage = new MemoryStorage()
     new StorageAdapter(storage, 'custom').saveLevel(fixture(), progress())

@@ -1,21 +1,17 @@
-import type { CompiledCircuit, FaultMap, StuckAt } from '../types/circuit'
-import { LevelValidationError, compileCircuit } from './levelLoader'
+import type { CompiledCircuit, Fault, FaultMap } from '../types/circuit'
+import { LevelValidationError, compileCircuit, isGateType } from './levelLoader'
 
 /**
- * A "Fault Finder" level: a complete, working circuit design in which some gates are
- * secretly stuck. The player runs tests and attaches probes to work out which ones.
+ * A "Fault Finder" level: a complete circuit in which some gates are secretly stuck.
+ * The player runs tests, sees every wire, and works out which gates are stuck.
  */
 export interface FaultLevel extends CompiledCircuit {
   readonly id: string
   readonly title: string
-  /** One or two sentences shown before the first test. */
-  readonly briefing: string
-  /** The real faults. The player is told how many there are, not where. */
+  /** The real faults: stuck at 0/1, or acting like another gate. The player is told how many, not where. */
   readonly faults: FaultMap
   /** How many test vectors the player may run. */
   readonly testBudget: number
-  /** How many internal wires the player may attach a probe to. */
-  readonly probeBudget: number
   /** Wrong diagnoses allowed before the board is lost. */
   readonly maxMistakes: number
 }
@@ -42,11 +38,16 @@ function count(value: unknown, path: string, min: number): number {
 function faults(value: unknown, circuit: CompiledCircuit): FaultMap {
   if (value === null || typeof value !== 'object' || Array.isArray(value)) fail('faults', 'expected an object')
   const entries = Object.entries(value as Record<string, unknown>)
-  if (entries.length === 0) fail('faults', 'expected at least one stuck gate')
-  return Object.fromEntries(entries.map(([slotId, stuckAt]) => {
-    if (!Object.hasOwn(circuit.slots, slotId)) fail(`faults.${slotId}`, 'unknown slot')
-    if (stuckAt !== 0 && stuckAt !== 1) fail(`faults.${slotId}`, 'expected a stuck-at value of 0 or 1')
-    return [slotId, stuckAt as StuckAt]
+  if (entries.length === 0) fail('faults', 'expected at least one faulty gate')
+  return Object.fromEntries(entries.map(([slotId, fault]): [string, Fault] => {
+    const path = `faults.${slotId}`
+    if (!Object.hasOwn(circuit.slots, slotId)) fail(path, 'unknown slot')
+    if (fault === 0 || fault === 1) return [slotId, fault]
+    if (!isGateType(fault)) fail(path, 'expected a stuck-at value of 0 or 1, or a gate type')
+    const slot = circuit.slots[slotId]
+    if (fault === slot.assignedGate) fail(path, `acting like its own gate (${fault}) is not a fault`)
+    if ((fault === 'NOT' ? 1 : 2) !== slot.inputs.length) fail(path, `${fault} does not fit a gate with ${slot.inputs.length} input(s)`)
+    return [slotId, fault]
   }))
 }
 
@@ -64,7 +65,6 @@ export function loadFaultLevel(input: unknown): FaultLevel {
   const level = parsed as Record<string, unknown>
   const id = text(level.id, 'id')
   const title = text(level.title, 'title')
-  const briefing = text(level.briefing, 'briefing')
   const circuit = compileCircuit(level)
   if (circuit.primaryInputs.length > MAX_FAULT_LEVEL_INPUTS) {
     fail('primaryInputs', `expected at most ${MAX_FAULT_LEVEL_INPUTS} inputs`)
@@ -73,10 +73,9 @@ export function loadFaultLevel(input: unknown): FaultLevel {
     if (slot.assignedGate === 'NULL') fail(`slots.${slot.id}.assignedGate`, 'fault levels must be complete circuits')
   }
   return {
-    id, title, briefing, ...circuit,
+    id, title, ...circuit,
     faults: faults(level.faults, circuit),
     testBudget: count(level.testBudget, 'testBudget', 1),
-    probeBudget: count(level.probeBudget, 'probeBudget', 0),
     maxMistakes: count(level.maxMistakes, 'maxMistakes', 1),
   }
 }

@@ -1,7 +1,6 @@
 {
   "id": "fault_01_two_lines",
   "title": "Two Lines",
-  "briefing": "One of these two gates is stuck. Set the switches, run a test, and compare what the board should output with what it actually does.",
   "primaryInputs": ["A", "B"],
   "primaryOutputs": ["Z", "Y"],
   "slots": {
@@ -26,6 +25,5 @@
   },
   "faults": {"g_or": 1},
   "testBudget": 3,
-  "probeBudget": 0,
   "maxMistakes": 2
 }

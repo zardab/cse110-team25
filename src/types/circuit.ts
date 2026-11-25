@@ -55,8 +55,14 @@ export interface LevelConfig extends Omit<LevelDefinition, 'availableGatePalette
 
 export type StuckAt = 0 | 1;
 
-/** Stuck-at faults keyed by slot ID: the slot's output is forced to the value no matter its inputs. */
-export type FaultMap = Readonly<Record<string, StuckAt>>;
+/**
+ * How a faulty slot misbehaves: stuck at 0 or 1 (its output is forced to that value no matter
+ * its inputs), or a gate type it secretly acts like instead of its own (an AND acting like OR).
+ */
+export type Fault = StuckAt | GateType;
+
+/** Faults keyed by slot ID. */
+export type FaultMap = Readonly<Record<string, Fault>>;
 
 export interface SimulationResult {
   readonly isComplete: boolean;

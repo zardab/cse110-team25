@@ -33,6 +33,7 @@ export class SceneController implements ScreenSwitcher {
     private onLevel: (levelId: string) => void,
     private onMinigame1: () => void,
     private onMinigame2: () => void,
+    private onMinigame3: () => void,
   ) {
     const width = window.innerWidth;
     const height = window.innerHeight;
@@ -156,6 +157,11 @@ export class SceneController implements ScreenSwitcher {
       case "minigame2":
         this.hideAllScreens();
         this.onMinigame2();
+        return;
+
+      case "minigame3":
+        this.hideAllScreens();
+        this.onMinigame3();
         return;
     }
   }

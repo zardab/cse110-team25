@@ -51,7 +51,9 @@ export function simulateCircuit(
 
         const inputStates = slot.inputs.map((source) => resolveSource(source, circuit.slots, wireStates));
         if (Object.hasOwn(faults, slotId)) {
-            wireStates[slot.outputWireId] = faults[slotId];
+            const fault = faults[slotId];
+            // A stuck slot outputs its value; a slot acting like another gate evaluates as that gate.
+            wireStates[slot.outputWireId] = typeof fault === 'number' ? fault : evaluateGate(fault, inputStates);
             continue;
         }
         wireStates[slot.outputWireId] = slot.assignedGate === 'NULL'

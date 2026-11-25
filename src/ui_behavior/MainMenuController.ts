@@ -19,6 +19,7 @@ export class MainMenuController implements ScreenController {
 			() => this.handleStartClick(),
 			() => this.handleMinigame1Click(),
 			() => this.handleMinigame2Click(),
+			() => this.handleMinigame3Click(),
 		);
 	}
 
@@ -50,6 +51,14 @@ export class MainMenuController implements ScreenController {
 		this.startClicked = true;
 
 		this.screenSwitcher.switchToScreen({ type: "minigame2" });
+	}
+
+	// Standalone Minigame 3
+	private handleMinigame3Click(): void {
+		if (this.startClicked) return;
+		this.startClicked = true;
+
+		this.screenSwitcher.switchToScreen({ type: "minigame3" });
 	}
 
 	getView(): MainMenuView {

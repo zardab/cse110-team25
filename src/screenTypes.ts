@@ -9,7 +9,8 @@ export type ScreenId =
   | { type: "faultFinder" }
   | { type: "level1" }
   | { type: "minigame1" }
-  | { type: "minigame2" };
+  | { type: "minigame2" }
+  | { type: "minigame3" };
   
 
 export interface View {

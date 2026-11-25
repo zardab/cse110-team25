@@ -1,7 +1,6 @@
 {
   "id": "fault_05_double_fault",
   "title": "Double Fault",
-  "briefing": "Two gates are stuck this time, and one can hide the other. Mark both before you submit.",
   "primaryInputs": ["A", "B", "C", "D"],
   "primaryOutputs": ["Z", "Y"],
   "slots": {
@@ -51,8 +50,7 @@
       "assignedGate": "XNOR"
     }
   },
-  "faults": {"g_or": 1, "g_xnor": 0},
+  "faults": {"g_and": "OR", "g_xnor": "NOR"},
   "testBudget": 6,
-  "probeBudget": 2,
   "maxMistakes": 3
 }
