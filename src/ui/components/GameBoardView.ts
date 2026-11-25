@@ -1,5 +1,6 @@
 import Konva from 'konva';
 import type { LevelConfig, SignalState, GateType } from '../../types/circuit';
+import { addGateIcon, loadGateIcon } from './boards/gateIcons';
 
 interface GameBoardViewOptions {
   container: HTMLDivElement;
@@ -20,6 +21,7 @@ export class GameBoardView {
   private readonly layer = new Konva.Layer();
   private readonly controls = new AbortController();
   private slotPositions = new Map<string, Point>();
+  private lastRender: { level: LevelConfig; wireStates: Record<string, SignalState> } | null = null;
 
   constructor(private readonly options: GameBoardViewOptions) {
     this.stage = new Konva.Stage({ container: options.container, width: 850, height: 420 });
@@ -31,6 +33,7 @@ export class GameBoardView {
   }
 
   render(level: LevelConfig, wireStates: Record<string, SignalState> = {}): void {
+    this.lastRender = { level, wireStates };
     this.layer.destroyChildren();
     this.slotPositions.clear();
 
@@ -88,7 +91,7 @@ export class GameBoardView {
       const y = end.y;
       const met = signal === target;
       const icon = target === 0 ? '💀' : '💡';
-      const active = met ? (target === 0 ? '#A1A1AA' : '#FACC15') : '#E5E7EB';
+      const active = met ? (target === 0 ? '#A1A1AA' : '#FACC15') : '#3F3F46';
       const glow = met ? (target === 0 ? '#D4D4D8' : '#FEF08A') : null;
       if (glow) this.layer.add(new Konva.Circle({ x, y, radius: 28, fill: glow, opacity: 0.6 }));
       this.layer.add(new Konva.Circle({ x, y, radius: 22, fill: active }));
@@ -101,33 +104,44 @@ export class GameBoardView {
         fill: value ? '#EAB308' : '#9CA3AF', offsetX: 13, offsetY: 13,
       }));
     }
+    const pendingIcons: string[] = [];
     for (const [id, position] of this.slotPositions) {
       const gate = level.slots[id].assignedGate;
       const empty = gate === 'NULL';
       const group = new Konva.Group(position);
       group.add(new Konva.Rect({
         width: SLOT_WIDTH, height: SLOT_HEIGHT, cornerRadius: 14, strokeWidth: 2,
-        fill: empty ? '#FAFAFA' : '#F9FAFB', stroke: empty ? '#9CA3AF' : '#3B82F6',
+        fill: empty ? '#27272A' : '#1F2937', stroke: empty ? '#52525B' : '#3B82F6',
         dash: empty ? [6, 6] : [],
       }));
-      group.add(new Konva.Text({
-        width: SLOT_WIDTH, height: SLOT_HEIGHT, align: 'center', verticalAlign: 'middle',
-        text: empty ? 'DROP GATE' : gate, fontSize: 15, fontStyle: 'bold',
-        fill: empty ? '#9CA3AF' : '#1D4ED8',
-      }));
+      if (empty) {
+        group.add(new Konva.Text({
+          width: SLOT_WIDTH, height: SLOT_HEIGHT, align: 'center', verticalAlign: 'middle',
+          text: 'DROP GATE', fontSize: 15, fontStyle: 'bold', fill: '#A1A1AA',
+        }));
+      } else if (!addGateIcon(group, gate, SLOT_WIDTH, SLOT_HEIGHT)) {
+        pendingIcons.push(gate);
+      }
       group.on('click tap', () => {
         if (!empty) this.options.onRemoveGate?.(id);
       });
       this.layer.add(group);
     }
     this.layer.batchDraw();
+
+    if (pendingIcons.length > 0) {
+      void Promise.all([...new Set(pendingIcons)].map(loadGateIcon)).then(() => {
+        if (!this.lastRender) return;
+        this.render(this.lastRender.level, this.lastRender.wireStates);
+      });
+    }
   }
 
   private drawWire(start: Point, end: Point, signal?: SignalState): void {
     const middle = (start.x + end.x) / 2;
     this.layer.add(new Konva.Line({
       points: [start.x, start.y, middle, start.y, middle, end.y, end.x, end.y],
-      stroke: signal === 1 ? '#EAB308' : '#D1D5DB',
+      stroke: signal === 1 ? '#EAB308' : '#52525B',
       strokeWidth: signal === 1 ? 4 : 3,
       lineJoin: 'round',
       lineCap: 'round',
@@ -151,6 +165,7 @@ export class GameBoardView {
   }
 
   destroy(): void {
+    this.lastRender = null;
     this.controls.abort();
     this.stage.destroy();
   }
