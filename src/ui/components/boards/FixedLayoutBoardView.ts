@@ -1,5 +1,6 @@
 import Konva from 'konva';
 import type { LevelConfig, SignalState, GateType } from '../../../types/circuit';
+import { addGateIcon, loadGateIcon } from './gateIcons';
 
 export interface Point { x: number; y: number }
 
@@ -35,6 +36,7 @@ export class FixedLayoutBoardView {
   private readonly scale: number;
   private readonly slotWidth: number;
   private readonly slotHeight: number;
+  private lastRender: { level: LevelConfig; wireStates: Record<string, SignalState> } | null = null;
 
   constructor(
     private readonly options: BoardViewOptions,
@@ -58,6 +60,7 @@ export class FixedLayoutBoardView {
   }
 
   render(level: LevelConfig, wireStates: Record<string, SignalState> = {}): void {
+    this.lastRender = { level, wireStates };
     this.layer.destroyChildren();
     this.slotPositions.clear();
 
@@ -104,7 +107,7 @@ export class FixedLayoutBoardView {
       const y = end.y;
       const met = signal === target;
       const icon = target === 0 ? '💀' : '💡';
-      const active = met ? (target === 0 ? '#A1A1AA' : '#FACC15') : '#E5E7EB';
+      const active = met ? (target === 0 ? '#A1A1AA' : '#FACC15') : '#3F3F46';
       const glow = met ? (target === 0 ? '#D4D4D8' : '#FEF08A') : null;
       const iconSize = Math.round(22 * (this.slotWidth / DEFAULT_SLOT_WIDTH));
       if (glow) this.layer.add(new Konva.Circle({ x, y, radius: 24, fill: glow, opacity: 0.6 }));
@@ -124,6 +127,7 @@ export class FixedLayoutBoardView {
     }
 
     const fontSize = Math.round(14 * (this.slotWidth / DEFAULT_SLOT_WIDTH));
+    const pendingIcons: string[] = [];
     for (const [id, position] of this.slotPositions) {
       const gate = level.slots[id]?.assignedGate;
       if (gate === undefined) continue;
@@ -131,14 +135,17 @@ export class FixedLayoutBoardView {
       const group = new Konva.Group(position);
       group.add(new Konva.Rect({
         width: this.slotWidth, height: this.slotHeight, cornerRadius: 12, strokeWidth: 2,
-        fill: empty ? '#FAFAFA' : '#F9FAFB', stroke: empty ? '#9CA3AF' : '#3B82F6',
+        fill: empty ? '#27272A' : '#1F2937', stroke: empty ? '#52525B' : '#3B82F6',
         dash: empty ? [6, 6] : [],
       }));
-      group.add(new Konva.Text({
-        width: this.slotWidth, height: this.slotHeight, align: 'center', verticalAlign: 'middle',
-        text: empty ? 'DROP GATE' : gate, fontSize, fontStyle: 'bold',
-        fill: empty ? '#9CA3AF' : '#1D4ED8',
-      }));
+      if (empty) {
+        group.add(new Konva.Text({
+          width: this.slotWidth, height: this.slotHeight, align: 'center', verticalAlign: 'middle',
+          text: 'DROP GATE', fontSize, fontStyle: 'bold', fill: '#A1A1AA',
+        }));
+      } else if (!addGateIcon(group, gate, this.slotWidth, this.slotHeight)) {
+        pendingIcons.push(gate);
+      }
       group.on('click tap', () => {
         if (!empty) this.options.onRemoveGate?.(id);
       });
@@ -146,6 +153,13 @@ export class FixedLayoutBoardView {
     }
 
     this.layer.batchDraw();
+
+    if (pendingIcons.length > 0) {
+      void Promise.all([...new Set(pendingIcons)].map(loadGateIcon)).then(() => {
+        if (!this.lastRender) return;
+        this.render(this.lastRender.level, this.lastRender.wireStates);
+      });
+    }
   }
 
   private drawWire(start: Point, end: Point, signal?: SignalState, lane = 0): void {
@@ -158,7 +172,7 @@ export class FixedLayoutBoardView {
     const middle = start.x + dx * t;
     this.layer.add(new Konva.Line({
       points: [start.x, start.y, middle, start.y, middle, end.y, end.x, end.y],
-      stroke: signal === 1 ? '#EAB308' : '#D1D5DB',
+      stroke: signal === 1 ? '#EAB308' : '#52525B',
       strokeWidth: signal === 1 ? 3.5 : 2.5,
       lineJoin: 'round',
       lineCap: 'round',
@@ -182,6 +196,7 @@ export class FixedLayoutBoardView {
   }
 
   destroy(): void {
+    this.lastRender = null;
     this.controls.abort();
     this.stage.destroy();
   }

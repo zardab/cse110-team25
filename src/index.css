@@ -7,8 +7,8 @@
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  background-color: #ECECED;
-  color: #1F2937;
+  background-color: #09090B;
+  color: #FAFAFA;
   height: 100vh;
   width: 100vw;
   overflow: visible;
@@ -43,7 +43,7 @@ body {
   background: transparent;
   border: none;
   cursor: pointer;
-  color: #71717A;
+  color: #A1A1AA;
   padding: 6px;
   display: flex;
   align-items: center;
@@ -53,8 +53,8 @@ body {
 }
 
 .icon-btn:hover {
-  background-color: #E4E4E7;
-  color: #18181B;
+  background-color: #27272A;
+  color: #FAFAFA;
 }
 
 /* Changes the color of icons that cannot be used by user
@@ -81,7 +81,7 @@ body {
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  border: 2px solid #18181B;
+  border: 2px solid #FAFAFA;
   background-color: transparent;
   cursor: pointer;
   box-sizing: border-box;
@@ -89,8 +89,8 @@ body {
 
 .dot.current,
 .dot.active {
-  background-color: #18181B;
-  box-shadow: 0 0 0 3px #ECECED, 0 0 0 5px #18181B;
+  background-color: #FAFAFA;
+  box-shadow: 0 0 0 3px #09090B, 0 0 0 5px #FAFAFA;
 }
 
 /* --- MAIN CANVAS BOARD --- */
@@ -98,9 +98,9 @@ body {
   position: relative;
   flex: 1;
   min-height: 0;
-  background-color: #FAFAFA;
+  background-color: #18181B;
   border-radius: 24px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
   overflow: visible;
   display: flex;
   justify-content: center;
@@ -119,12 +119,12 @@ body {
 }
 
 .badge {
-  background: #EFEFEF;
+  background: #27272A;
   border-radius: 8px;
   padding: 6px 14px;
   font-size: 14px;
   font-weight: 600;
-  color: #18181B;
+  color: #FAFAFA;
 }
 
 .next-level-btn,
@@ -144,14 +144,14 @@ body {
 .next-level-btn {
   right: 24px;
   z-index: 15;
-  background: #18181B;
-  color: #FFFFFF;
+  background: #FAFAFA;
+  color: #18181B;
 }
 
 .prev-level-btn {
   left: 24px;
-  background: #E4E4E7;
-  color: #18181B;
+  background: #27272A;
+  color: #FAFAFA;
 }
 
 .next-level-btn[hidden],
@@ -170,7 +170,7 @@ body {
 }
 
 .attempt-badge {
-  color: #71717A;
+  color: #A1A1AA;
   font-weight: 500;
   font-size: 13px;
 }
@@ -208,34 +208,62 @@ body {
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.08em;
-  color: #8C8F96;
+  color: #71717A;
 }
 
 .palette-grid {
   display: flex;
   gap: 16px;
-  background-color: #E2E2E4;
+  background-color: #18181B;
   padding: 12px 16px;
   border-radius: 16px;
   min-height: 80px;
   align-items: center;
   justify-content: flex-start;
   overflow-x: auto;
+  border: 1px solid #27272A;
 }
 
-/* Fixed card size, minimal dark border hover */
+/* Fixed card size; SVG fills the inner 60% (20% padding each side), no stretch */
 .gate-card {
+  position: relative;
   flex: 0 0 140px;
+  width: 140px;
   height: 70px;
-  background-color: #FFFFFF !important;
+  box-sizing: border-box;
+  background-color: #27272A !important;
   border-radius: 12px;
-  border: 1.5px solid #E5E7EB !important;
+  border: 1.5px solid #3F3F46 !important;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: grab;
   box-shadow: none !important;
-  transition: border-color 0.2s ease, background-color 0.2s ease;
+  overflow: hidden;
+  transition: border-color 0.2s ease;
+}
+
+.gate-card-icon {
+  position: absolute;
+  top: 20%;
+  left: 20%;
+  width: 60%;
+  height: 60%;
+  object-fit: contain;
+  object-position: center;
+  pointer-events: none;
+  user-select: none;
+}
+
+.gate-count {
+  position: absolute;
+  right: 6px;
+  bottom: 4px;
+  z-index: 1;
+  font-size: 11px;
+  font-weight: 600;
+  color: #A1A1AA;
+  line-height: 1;
 }
 
 .gate-card:active {
@@ -243,14 +271,13 @@ body {
 }
 
 .gate-card:hover {
-  border-color: #4B5563 !important;
+  border-color: #A1A1AA !important;
   transform: none !important;
   box-shadow: none !important;
 }
 
 .gate-card.selected {
-  border-color: #111827 !important;
-  background-color: #F9FAFB !important;
+  border-color: #E4E4E7 !important;
 }
 
 #container {
@@ -291,7 +318,8 @@ body {
   min-width: 58px;
   padding: 6px 12px;
   border-radius: 8px;
-  background: #EFEFEF;
+  background: #27272A;
+  color: #FAFAFA;
   text-align: center;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
@@ -304,7 +332,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(250, 250, 250, 0.94);
+  background: rgba(9, 9, 11, 0.92);
 }
 
 .game-over-overlay[hidden] {
@@ -314,6 +342,7 @@ body {
 .game-over-card {
   text-align: center;
   padding: 32px;
+  color: #FAFAFA;
 }
 
 .game-over-card h1 {
@@ -322,7 +351,7 @@ body {
 
 .game-over-card p {
   margin-bottom: 20px;
-  color: #71717A;
+  color: #A1A1AA;
 }
 
 #restart-minigame-btn {
@@ -331,6 +360,8 @@ body {
   border-radius: 8px;
   cursor: pointer;
   font-weight: 600;
+  background: #FAFAFA;
+  color: #18181B;
 }
 
 /* --- GAME SIDEBAR --- */
@@ -347,7 +378,7 @@ body {
 .sidebar-backdrop {
   position: absolute;
   inset: 0;
-  background: rgba(24, 24, 27, 0.28);
+  background: rgba(0, 0, 0, 0.55);
 }
 
 .sidebar-panel {
@@ -357,8 +388,8 @@ body {
   width: min(30vw, 360px);
   min-width: 260px;
   height: 100%;
-  background: #F4F4F5;
-  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.12);
+  background: #18181B;
+  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.4);
   display: flex;
   flex-direction: column;
   padding: 28px 32px 36px;
@@ -370,7 +401,7 @@ body {
   background: transparent;
   border: none;
   cursor: pointer;
-  color: #18181B;
+  color: #FAFAFA;
   padding: 4px;
   margin-bottom: 36px;
   display: flex;
@@ -398,7 +429,7 @@ body {
   text-align: left;
   font-size: 28px;
   font-weight: 700;
-  color: #18181B;
+  color: #FAFAFA;
   cursor: pointer;
   line-height: 1.2;
   transition: opacity 0.15s ease;
@@ -419,7 +450,7 @@ body {
 .sidebar-difficulty-label {
   font-size: 28px;
   font-weight: 700;
-  color: #18181B;
+  color: #FAFAFA;
   line-height: 1.2;
 }
 
@@ -433,9 +464,9 @@ body {
   padding: 4px;
   border: none;
   border-radius: 999px;
-  background: #FFFFFF;
+  background: #27272A;
   cursor: pointer;
-  box-shadow: inset 0 0 0 1px #E4E4E7;
+  box-shadow: inset 0 0 0 1px #3F3F46;
 }
 
 .difficulty-toggle-thumb {
@@ -445,7 +476,7 @@ body {
   width: calc(50% - 4px);
   height: calc(100% - 8px);
   border-radius: 999px;
-  background: #18181B;
+  background: #FAFAFA;
   transition: transform 0.25s ease;
   pointer-events: none;
 }
@@ -460,22 +491,22 @@ body {
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.04em;
-  color: #A1A1AA;
+  color: #71717A;
   transition: color 0.25s ease;
 }
 
 .difficulty-toggle[data-mode="EASY"] .difficulty-option[data-value="EASY"],
 .difficulty-toggle[data-mode="HARD"] .difficulty-option[data-value="HARD"] {
-  color: #FFFFFF;
+  color: #18181B;
 }
 
 .sidebar-footer {
   font-size: 18px;
   font-weight: 700;
-  color: #18181B;
+  color: #FAFAFA;
 }
 
 .sidebar-footer .dim {
-  color: #A1A1AA;
+  color: #71717A;
   font-weight: 500;
 }

@@ -111,12 +111,7 @@ export class LevelScreen {
     this.boardView = Board ? new Board(boardOptions) : new GameBoardView(boardOptions);
 
     this.setupHeaderAndTray();
-    const title = document.getElementById('level-title');
-    if (title) {
-      const index = mainLevels.findIndex((level) => level.id === this.startingLevel.id);
-      const levelNumber = index >= 0 ? index + 1 : 1;
-      title.innerHTML = `Level ${levelNumber} <span class="dim">/ 5</span>`;
-    }
+    this.updateLevelProgressUI();
     this.loadLevel(this.restoreLevel());
     if (this.timed) this.startTimer();
   }
@@ -296,10 +291,25 @@ export class LevelScreen {
       }
     }, options);
 
+  }
+
+  /** Sync top dots, board badge, and sidebar footer to the catalog position. */
+  private updateLevelProgressUI(): void {
+    const index = this.catalogIndex();
+    const total = mainLevels.length;
+    const levelNumber = index >= 0 ? index + 1 : 1;
+    const label = `Level ${levelNumber} <span class="dim">/ ${total}</span>`;
+
+    const title = document.getElementById('level-title');
+    if (title) title.innerHTML = label;
+
+    const footer = document.querySelector('.sidebar-footer');
+    if (footer) footer.innerHTML = label;
+
     const dotsContainer = document.getElementById('progress-dots');
     if (dotsContainer) {
-      dotsContainer.innerHTML = Array.from({ length: 12 }, (_, i) =>
-        `<div class="dot ${i === 0 ? 'current active' : ''}"></div>`,
+      dotsContainer.innerHTML = Array.from({ length: total }, (_, i) =>
+        `<div class="dot${i === index ? ' current active' : ''}"></div>`,
       ).join('');
     }
   }
@@ -320,19 +330,23 @@ export class LevelScreen {
         const isEmpty = remaining <= 0;
         return `
           <div 
-            class="gate-card" 
+            class="gate-card${isSelected ? ' selected' : ''}" 
             draggable="${!isEmpty}" 
             data-gate="${gate}"
+            aria-label="${gate}"
             aria-disabled="${isEmpty}"
             style="
-              border: ${isSelected ? '2px solid #3B82F6' : '1px solid #E5E7EB'};
-              background-color: ${isSelected ? '#EFF6FF' : '#F9FAFB'};
               cursor: ${isEmpty ? 'not-allowed' : 'grab'};
               opacity: ${isEmpty && !isSelected ? 0.4 : 1};
             "
           >
-            <span style="font-weight: 700; font-size: 14px;">${gate}</span>
-            <span class="gate-count" style="font-size: 12px; color: #6B7280;">×${remaining}</span>
+            <img
+              class="gate-card-icon"
+              src="/assets/${gate}.svg"
+              alt="${gate}"
+              draggable="false"
+            />
+            <span class="gate-count">×${remaining}</span>
           </div>
         `;
       })
@@ -349,7 +363,6 @@ export class LevelScreen {
         });
       }
       card.addEventListener('dragstart', (e) => {
-        (e as DragEvent).dataTransfer?.setData('gateType', gate);
         (e as DragEvent).dataTransfer?.setData('gateType', gate);
       });
     });
