@@ -88,9 +88,9 @@ export class GateInfoModal {
     const info = GATE_INFO[gate];
 
     const title = this.dialog.querySelector('.gate-info-title');
-    const subtitle = this.dialog.querySelector('.gate-info-subtitle');
+    const subtitle = this.dialog.querySelector<HTMLElement>('.gate-info-subtitle');
     const description = this.dialog.querySelector('.gate-info-description');
-    const funFact = this.dialog.querySelector('.gate-info-fun-fact');
+    const funFact = this.dialog.querySelector<HTMLElement>('.gate-info-fun-fact');
     const graphic = this.dialog.querySelector('.gate-info-graphic') as HTMLImageElement | null;
     const inputLabels = this.dialog.querySelector('.gate-info-input-labels');
     const table = this.dialog.querySelector('.gate-info-truth');
