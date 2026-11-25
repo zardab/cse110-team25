@@ -289,6 +289,10 @@ export class LevelScreen {
     };
     document.getElementById('reset-btn')?.addEventListener('click', reset, options);
     document.getElementById('restart-minigame-btn')?.addEventListener('click', reset, options);
+    document.getElementById('sidebar-restart-btn')?.addEventListener('click', () => {
+      reset();
+      this.sideMenu.close();
+    }, options);
 
     // Undo Button Event: the store takes back the latest board change, if there is one
     document.getElementById('undo-btn')?.addEventListener('click', () => {
