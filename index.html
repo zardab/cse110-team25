@@ -65,6 +65,44 @@
     <div id="palette-grid" class="palette-grid"></div>
   </footer>
 
+  <div id="gate-info-overlay" class="gate-info-overlay" hidden>
+    <div class="gate-info-shell">
+      <div class="gate-info-row">
+        <button id="gate-info-prev" class="gate-info-arrow" type="button" aria-label="Previous gate" hidden>
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <div id="gate-info-modal" class="gate-info-modal" role="dialog" aria-modal="true" aria-labelledby="gate-info-title">
+          <div class="gate-info-copy">
+            <div class="gate-info-heading">
+              <h2 id="gate-info-title" class="gate-info-title">NAND</h2>
+              <p class="gate-info-subtitle">“NOT-AND”</p>
+            </div>
+            <p class="gate-info-description"></p>
+            <p class="gate-info-fun-fact"></p>
+          </div>
+          <div class="gate-info-visual">
+            <div class="gate-info-input-labels" aria-hidden="true"></div>
+            <img class="gate-info-graphic" src="/assets/NAND.svg" alt="" />
+          </div>
+          <div class="gate-info-aside">
+            <div class="gate-info-truth"></div>
+            <div class="gate-info-actions">
+              <button id="gate-info-dismiss" class="gate-info-btn gate-info-btn-dismiss" type="button">Got it</button>
+            </div>
+          </div>
+        </div>
+        <button id="gate-info-next" class="gate-info-arrow" type="button" aria-label="Next gate" hidden>
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M9 18l6-6-6-6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+      </div>
+      <div id="gate-info-dots" class="gate-info-dots" hidden></div>
+    </div>
+  </div>
+
   <div id="game-sidebar" class="game-sidebar" hidden>
     <div id="sidebar-backdrop" class="sidebar-backdrop" aria-hidden="true"></div>
     <aside class="sidebar-panel" role="dialog" aria-modal="true" aria-label="Game menu">

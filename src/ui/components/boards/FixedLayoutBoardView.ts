@@ -1,6 +1,6 @@
 import Konva from 'konva';
 import type { LevelConfig, SignalState, GateType } from '../../../types/circuit';
-import { addGateIcon, loadGateIcon } from './gateIcons';
+import { addGateIcon, addSlotInfoButton, loadGateIcon, loadInfoIcon } from './gateIcons';
 
 export interface Point { x: number; y: number }
 
@@ -22,6 +22,7 @@ export interface BoardViewOptions {
   levelConfig: LevelConfig;
   onPlaceGate?: (slotId: string, gate: GateType) => void;
   onRemoveGate?: (slotId: string) => void;
+  onGateInfo?: (gate: GateType) => void;
 }
 
 const DEFAULT_SLOT_WIDTH = 120;
@@ -128,6 +129,7 @@ export class FixedLayoutBoardView {
 
     const fontSize = Math.round(14 * (this.slotWidth / DEFAULT_SLOT_WIDTH));
     const pendingIcons: string[] = [];
+    let needsInfoIcon = false;
     for (const [id, position] of this.slotPositions) {
       const gate = level.slots[id]?.assignedGate;
       if (gate === undefined) continue;
@@ -143,8 +145,13 @@ export class FixedLayoutBoardView {
           width: this.slotWidth, height: this.slotHeight, align: 'center', verticalAlign: 'middle',
           text: 'DROP GATE', fontSize, fontStyle: 'bold', fill: '#A1A1AA',
         }));
-      } else if (!addGateIcon(group, gate, this.slotWidth, this.slotHeight)) {
-        pendingIcons.push(gate);
+      } else {
+        if (!addGateIcon(group, gate, this.slotWidth, this.slotHeight)) {
+          pendingIcons.push(gate);
+        }
+        if (!addSlotInfoButton(group, this.slotWidth, () => this.options.onGateInfo?.(gate))) {
+          needsInfoIcon = true;
+        }
       }
       group.on('click tap', () => {
         if (!empty) this.options.onRemoveGate?.(id);
@@ -154,8 +161,12 @@ export class FixedLayoutBoardView {
 
     this.layer.batchDraw();
 
-    if (pendingIcons.length > 0) {
-      void Promise.all([...new Set(pendingIcons)].map(loadGateIcon)).then(() => {
+    const pending = [
+      ...[...new Set(pendingIcons)].map(loadGateIcon),
+      ...(needsInfoIcon ? [loadInfoIcon()] : []),
+    ];
+    if (pending.length > 0) {
+      void Promise.all(pending).then(() => {
         if (!this.lastRender) return;
         this.render(this.lastRender.level, this.lastRender.wireStates);
       });

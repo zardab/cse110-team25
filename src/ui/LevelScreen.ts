@@ -6,11 +6,12 @@ import { Level03NandBoardView } from './components/boards/Level03NandBoardView';
 import { Level04NorBoardView } from './components/boards/Level04NorBoardView';
 import { Level05XnorBoardView } from './components/boards/Level05XnorBoardView';
 import { SideMenu } from './components/SideMenu';
+import { GateInfoModal } from './components/GateInfoModal';
 import { createStore, type GameState, type GameStore } from '../state/store';
 import type { GateType, LevelConfig } from '../types/circuit';
 import { LevelValidationError, loadLevel } from '../content/levelLoader';
 import type { StorageAdapter } from '../persistence/storageAdapter';
-import { mainLevels } from '../content/levelCatalog';
+import { levelIntroGates, mainLevels } from '../content/levelCatalog';
 
 type BoardView = GameBoardView | FixedLayoutBoardView;
 
@@ -65,6 +66,7 @@ export class LevelScreen {
   private unsubscribe = () => {};
   private boardView: BoardView;
   private sideMenu!: SideMenu;
+  private gateInfo!: GateInfoModal;
   private readonly startingLevel: LevelConfig;
   private readonly storage?: StorageAdapter;
   private readonly onNextLevel?: (level: LevelConfig) => void;
@@ -105,6 +107,7 @@ export class LevelScreen {
       onRemoveGate: (slotId: string) => {
         if (!this.gameEnded) this.store.dispatch({ type: 'REMOVE_GATE', slotId });
       },
+      onGateInfo: (gate: GateType) => this.openGateInfo(gate),
     };
 
     const Board = LEVEL_BOARD_VIEWS[this.startingLevel.id];
@@ -114,6 +117,7 @@ export class LevelScreen {
     this.updateLevelProgressUI();
     this.loadLevel(this.restoreLevel());
     if (this.timed) this.startTimer();
+    this.showLevelIntro();
   }
 
   // The store has no reset action, so starting a level over means a fresh store.
@@ -164,6 +168,7 @@ export class LevelScreen {
     this.hideGameOver();
     this.hideLevelNavButtons();
     this.sideMenu.close();
+    this.gateInfo.close();
     this.unsubscribe();
     this.controls.abort();
     this.boardView.destroy();
@@ -263,6 +268,7 @@ export class LevelScreen {
   private setupHeaderAndTray() {
     const options = { signal: this.controls.signal };
     this.sideMenu = new SideMenu(this.controls.signal);
+    this.gateInfo = new GateInfoModal(this.controls.signal);
     document.getElementById('menu-btn')?.addEventListener('click', () => this.sideMenu.open(), options);
     document.getElementById('main-menu-btn')?.addEventListener('click', () => this.onMainMenu?.(), options);
 
@@ -346,18 +352,36 @@ export class LevelScreen {
               alt="${gate}"
               draggable="false"
             />
+            <button
+              type="button"
+              class="gate-card-info-btn"
+              data-gate-info="${gate}"
+              aria-label="About ${gate}"
+            >
+              <img src="/assets/info.svg" alt="" draggable="false" />
+            </button>
             <span class="gate-count">×${remaining}</span>
           </div>
         `;
       })
       .join('');
 
+    grid.querySelectorAll('.gate-card-info-btn').forEach((button) => {
+      const gate = button.getAttribute('data-gate-info') as GateType;
+      button.addEventListener('click', (event) => {
+        event.stopPropagation();
+        this.openGateInfo(gate);
+      });
+      button.addEventListener('pointerdown', (event) => event.stopPropagation());
+    });
+
     // Attach native HTML Drag & Click listeners; empty cards get none, as the store would reject them.
     grid.querySelectorAll('.gate-card[aria-disabled="false"]').forEach((card) => {
       const gate = card.getAttribute('data-gate') as GateType;
 
       if (slots.length === 1) {
-        card.addEventListener('click', () => {
+        card.addEventListener('click', (event) => {
+          if ((event.target as HTMLElement).closest('.gate-card-info-btn')) return;
           if (this.gameEnded) return;
           this.store.dispatch({ type: 'PLACE_GATE', slotId: slots[0].id, gate });
         });
@@ -366,5 +390,16 @@ export class LevelScreen {
         (e as DragEvent).dataTransfer?.setData('gateType', gate);
       });
     });
+  }
+
+  private openGateInfo(gate: GateType): void {
+    this.gateInfo.open(gate);
+  }
+
+  /** Same info card(s) as ⓘ, shown when entering a catalog level. */
+  private showLevelIntro(): void {
+    const gates = levelIntroGates[this.startingLevel.id];
+    if (!gates?.length) return;
+    this.gateInfo.openGates(gates, { locked: true });
   }
 }
