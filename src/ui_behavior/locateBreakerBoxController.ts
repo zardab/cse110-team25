@@ -12,11 +12,11 @@ export class locateBreakerBoxController implements ScreenController {
     stage: Konva.Stage,
     private width: number,
     private height: number,
-    level: number,
+    breakerSceneNumber: number,
     private onContinue: (levelId: string) => void,
   ) {
-    this.levelId = `level${level}`;
-    this.view = this.createView(level);
+    this.levelId = "";
+    this.view = this.createView(breakerSceneNumber);
 
     stage.on("mousemove.flashlight", () => {
       if (!this.active) return;
@@ -30,11 +30,11 @@ export class locateBreakerBoxController implements ScreenController {
     });
   }
 
-  private createView(level: number): locateBreakerBoxView {
+  private createView(breakerSceneNumber: number): locateBreakerBoxView {
     return new locateBreakerBoxView(
       this.width,
       this.height,
-      level,
+      breakerSceneNumber,
       () => {
         if (!this.active) return;
 
@@ -44,17 +44,17 @@ export class locateBreakerBoxController implements ScreenController {
     );
   }
 
-  // Change which level's flashlight scene is displayed.
-  public setLevel(level: number, levelId: string): void {
+  // Choose a breaker scene and its destination circuit level.
+  public setBreakerScene(breakerSceneNumber: number, levelId: string): void {
     this.active = false;
 
     const oldGroup = this.view.getGroup();
     const parent = oldGroup.getParent();
 
-    oldGroup.destroy();
+    this.view.destroy();
 
     this.levelId = levelId;
-    this.view = this.createView(level);
+    this.view = this.createView(breakerSceneNumber);
 
     if (parent) {
       parent.add(this.view.getGroup());
@@ -68,6 +68,7 @@ export class locateBreakerBoxController implements ScreenController {
 
   public stop(): void {
     this.active = false;
+    this.view.hide();
   }
 
   public getView(): locateBreakerBoxView {

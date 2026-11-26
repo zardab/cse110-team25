@@ -42,6 +42,7 @@ interface LevelScreenOptions {
   timed?: boolean;
   durationSeconds?: number;
   onNextLevel?: (level: LevelConfig) => void;
+  onGameComplete?: () => void;
   onPreviousLevel?: (level: LevelConfig) => void;
   onMainMenu?: () => void;
   /** Opens the tutorial; call `onReturn` when the player comes back so a timed run resumes. */
@@ -82,6 +83,7 @@ export class LevelScreen {
   private readonly startingLevel: LevelConfig;
   private readonly storage?: StorageAdapter;
   private readonly onNextLevel?: (level: LevelConfig) => void;
+  private readonly onGameComplete?: () => void;
   private readonly onPreviousLevel?: (level: LevelConfig) => void;
   private readonly onMainMenu?: () => void;
   private readonly onTutorial?: (onReturn: () => void) => void;
@@ -100,6 +102,7 @@ export class LevelScreen {
     this.startingLevel = options.level ?? LEVEL_1_CONFIG;
     this.storage = options.storage;
     this.onNextLevel = options.onNextLevel;
+    this.onGameComplete = options.onGameComplete;
     this.onPreviousLevel = options.onPreviousLevel;
     this.onMainMenu = options.onMainMenu;
     this.onTutorial = options.onTutorial;
@@ -244,6 +247,10 @@ export class LevelScreen {
     return mainLevels.findIndex((level) => level.id === this.startingLevel.id);
   }
 
+  private isFinalLevel(): boolean {
+    return !this.timed && this.startingLevel.id === "level_10_finale";
+  }
+
   private nextCatalogLevel(): LevelConfig | undefined {
     const index = this.catalogIndex();
     if (index < 0 || index >= mainLevels.length - 1) return undefined;
@@ -265,7 +272,13 @@ export class LevelScreen {
 
   private updateLevelNavButtons(solved: boolean): void {
     const next = document.getElementById('next-level-btn');
-    if (next) next.hidden = !(solved && this.nextCatalogLevel() && this.onNextLevel);
+    if (next) {
+      const finalLevel = this.isFinalLevel();
+      next.textContent = finalLevel ? "Finish Level" : "Next Level";
+      next.hidden = !(solved && (finalLevel
+        ? this.onGameComplete
+        : this.nextCatalogLevel() && this.onNextLevel));
+    }
 
     const prev = document.getElementById('prev-level-btn');
     if (prev) prev.hidden = !(this.previousCatalogLevel() && this.onPreviousLevel);
@@ -303,6 +316,11 @@ export class LevelScreen {
     }, options);
 
     document.getElementById('next-level-btn')?.addEventListener('click', () => {
+      if (!this.store.getState().result?.isSolved) return;
+      if (this.isFinalLevel()) {
+        this.onGameComplete?.();
+        return;
+      }
       const next = this.nextCatalogLevel();
       if (next) this.onNextLevel?.(next);
     }, options);
