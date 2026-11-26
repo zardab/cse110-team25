@@ -127,7 +127,7 @@ describe('Main game level integration', () => {
     screen.destroy();
 
     screen = new LevelScreen({ level: xor, storage });
-    expect(document.getElementById('level-title')!.textContent).toBe('Level 2 / 5');
+    expect(document.getElementById('level-title')!.textContent).toBe('Level 2 / 10');
     expect(render.mock.lastCall![0].slots.slot_xor.assignedGate).toBe('NULL');
     screen.destroy();
 
