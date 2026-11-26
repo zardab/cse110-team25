@@ -44,7 +44,8 @@ interface LevelScreenOptions {
   onNextLevel?: (level: LevelConfig) => void;
   onPreviousLevel?: (level: LevelConfig) => void;
   onMainMenu?: () => void;
-  onTutorial?: () => void;
+  /** Opens the tutorial; call `onReturn` when the player comes back so a timed run resumes. */
+  onTutorial?: (onReturn: () => void) => void;
 }
 
 const LEVEL_1_CONFIG: LevelConfig = {
@@ -83,7 +84,7 @@ export class LevelScreen {
   private readonly onNextLevel?: (level: LevelConfig) => void;
   private readonly onPreviousLevel?: (level: LevelConfig) => void;
   private readonly onMainMenu?: () => void;
-  private readonly onTutorial?: () => void;
+  private readonly onTutorial?: (onReturn: () => void) => void;
   private readonly controls = new AbortController();
 
   // Minigame timer settings
@@ -196,7 +197,12 @@ export class LevelScreen {
     this.gameEnded = false;
     this.hideGameOver();
     this.updateTimerDisplay();
+    this.runTimer();
+  }
 
+  // Ticks down from the current time without resetting it.
+  private runTimer() {
+    if (!this.timed || this.gameEnded || this.timerId !== null) return;
     this.timerId = setInterval(() => { this.timeRemaining--; this.updateTimerDisplay();
       if (this.timeRemaining <= 0) this.finishGame(false);}, 1000);
   }
@@ -285,10 +291,15 @@ export class LevelScreen {
     document.getElementById('menu-btn')?.addEventListener('click', () => this.sideMenu.open(), options);
     document.getElementById('main-menu-btn')?.addEventListener('click', () => this.onMainMenu?.(), options);
     // The level stays alive while the tutorial shows, so coming back keeps the board as it was.
+    // A timed run pauses its clock until the player comes back.
     document.getElementById('tutorial-btn')?.addEventListener('click', () => {
       if (!this.onTutorial) return;
       this.sideMenu.close();
-      this.onTutorial();
+      this.stopTimer();
+      const signal = this.controls.signal;
+      this.onTutorial(() => {
+        if (!signal.aborted) this.runTimer();
+      });
     }, options);
 
     document.getElementById('next-level-btn')?.addEventListener('click', () => {
