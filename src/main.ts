@@ -49,9 +49,20 @@ window.addEventListener("DOMContentLoaded", () => {
     scene.switchToScreen({ type: "gateGuess" });
   };
   
+  // Minigame 2: Timed circuit challenge
   const openMinigame2 = () => {
-    // Connect standalone Minigame 2 here.
-    console.warn("Minigame 2 is not connected yet.");
+    activeLevel?.destroy();
+
+    // Hide the main menu and display the game.
+    introContainer.style.display = "none";
+    appContainer.style.display = "flex";
+
+    // Launch a fresh timed level without changing story progress.
+    activeLevel = new LevelScreen({
+      timed: true,
+      durationSeconds: 15,
+      onMainMenu: showMainMenu,
+    });
   };
 
   const scene = new SceneController(openLevel, openMinigame1, openMinigame2, storage);
