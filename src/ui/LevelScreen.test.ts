@@ -98,7 +98,7 @@ describe('Main game level integration', () => {
       </div>
       <div id="game-sidebar" hidden>
         <button id="sidebar-close-btn"></button>
-        <button id="difficulty-toggle" data-mode="EASY"></button>
+        <button id="sidebar-restart-btn"></button>
       </div>
     `;
   });
@@ -108,7 +108,6 @@ describe('Main game level integration', () => {
   it('closes the sidebar on leaving a level and binds each control once on reopening', () => {
     const menu = document.getElementById('menu-btn')!;
     const sidebar = document.getElementById('game-sidebar')!;
-    const toggle = document.getElementById('difficulty-toggle')!;
     screen = new LevelScreen({ level: foundations, storage });
     menu.click();
     expect(sidebar.hidden).toBe(false);
@@ -118,8 +117,6 @@ describe('Main game level integration', () => {
     screen = new LevelScreen({ level: xor, storage });
     menu.click();
     expect(sidebar.hidden).toBe(false);
-    toggle.click();
-    expect(toggle.dataset.mode).toBe('HARD');
     document.getElementById('sidebar-close-btn')!.click();
     expect(sidebar.hidden).toBe(true);
   });
@@ -169,6 +166,17 @@ describe('Main game level integration', () => {
       placements: { slot_and: 'AND', slot_or: 'OR' },
     });
     expect(storage.loadLevel(xor)).toEqual(otherLevel);
+  });
+
+  it('sidebar Restart resets the board and closes the sidebar', () => {
+    screen = new LevelScreen({ level: foundations, storage });
+    options.onPlaceGate('slot_and', 'AND');
+    document.getElementById('menu-btn')!.click();
+    document.getElementById('sidebar-restart-btn')!.click();
+
+    expect(render.mock.lastCall![0].slots.slot_and.assignedGate).toBe('NULL');
+    expect(storage.loadLevel(foundations)?.placements.slot_and).toBe('NULL');
+    expect(document.getElementById('game-sidebar')!.hidden).toBe(true);
   });
 
   it('persists the board after undo and restores its gate inventory', () => {
@@ -270,7 +278,6 @@ describe('LevelScreen Logic', () => {
       <div id="game-sidebar" hidden>
         <div id="sidebar-backdrop"></div>
         <button id="sidebar-close-btn"></button>
-        <button id="difficulty-toggle" data-mode="EASY"></button>
       </div>
       
       <button id="undo-btn"></button>
@@ -385,7 +392,6 @@ describe('Timed minigame', () => {
       <div id="game-sidebar" hidden>
         <div id="sidebar-backdrop"></div>
         <button id="sidebar-close-btn"></button>
-        <button id="difficulty-toggle" data-mode="EASY"></button>
       </div>
       
       <button id="undo-btn"></button>
@@ -493,7 +499,6 @@ describe('Main Menu button', () => {
       <div id="game-sidebar" hidden>
         <button id="sidebar-close-btn"></button>
         <button id="main-menu-btn"></button>
-        <button id="difficulty-toggle" data-mode="EASY"></button>
       </div>
     `;
   });
