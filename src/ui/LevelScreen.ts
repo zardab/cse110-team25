@@ -39,6 +39,8 @@ const DEFAULT_MINIGAME_DURATION_SECONDS = 15;
 interface LevelScreenOptions {
   level?: LevelConfig;
   storage?: StorageAdapter;
+  /** The ordered set this level belongs to, for progress and Next/Prev. Defaults to the story levels. */
+  levels?: readonly LevelConfig[];
   timed?: boolean;
   durationSeconds?: number;
   onNextLevel?: (level: LevelConfig) => void;
@@ -81,6 +83,7 @@ export class LevelScreen {
   private sideMenu!: SideMenu;
   private gateInfo!: GateInfoModal;
   private readonly startingLevel: LevelConfig;
+  private readonly levels: readonly LevelConfig[];
   private readonly storage?: StorageAdapter;
   private readonly onNextLevel?: (level: LevelConfig) => void;
   private readonly onGameComplete?: () => void;
@@ -101,6 +104,7 @@ export class LevelScreen {
   constructor(options: LevelScreenOptions = {}) {
     this.startingLevel = options.level ?? LEVEL_1_CONFIG;
     this.storage = options.storage;
+    this.levels = options.levels ?? mainLevels;
     this.onNextLevel = options.onNextLevel;
     this.onGameComplete = options.onGameComplete;
     this.onPreviousLevel = options.onPreviousLevel;
@@ -230,8 +234,13 @@ export class LevelScreen {
     const title = document.getElementById('game-over-title');
     const message = document.getElementById('game-over-message');
 
-    if (title) title.textContent = won ? 'Level Complete!' : "Time's Up!";
+    const next = won && this.onNextLevel ? this.nextCatalogLevel() : undefined;
+    const clearedAll = won && !next && this.catalogIndex() === this.levels.length - 1;
+
+    if (title) title.textContent = won ? (clearedAll ? 'All Levels Complete!' : 'Level Complete!') : "Time's Up!";
     if (message) message.textContent = won ? `You finished with ${this.timeRemaining}s remaining!` : 'You ran out of time.';
+    const nextButton = document.getElementById('timed-next-level-btn');
+    if (nextButton) nextButton.hidden = !next;
     if (overlay) overlay.hidden = false;
     
     const undoBtn = document.getElementById('undo-btn') as HTMLButtonElement | null;
@@ -241,10 +250,12 @@ export class LevelScreen {
   private hideGameOver() {
     const overlay = document.getElementById('game-over-overlay');
     if (overlay) overlay.hidden = true;
+    const nextButton = document.getElementById('timed-next-level-btn');
+    if (nextButton) nextButton.hidden = true;
   }
 
   private catalogIndex(): number {
-    return mainLevels.findIndex((level) => level.id === this.startingLevel.id);
+    return this.levels.findIndex((level) => level.id === this.startingLevel.id);
   }
 
   private isFinalLevel(): boolean {
@@ -253,14 +264,14 @@ export class LevelScreen {
 
   private nextCatalogLevel(): LevelConfig | undefined {
     const index = this.catalogIndex();
-    if (index < 0 || index >= mainLevels.length - 1) return undefined;
-    return mainLevels[index + 1];
+    if (index < 0 || index >= this.levels.length - 1) return undefined;
+    return this.levels[index + 1];
   }
 
   private previousCatalogLevel(): LevelConfig | undefined {
     const index = this.catalogIndex();
     if (index <= 0) return undefined;
-    return mainLevels[index - 1];
+    return this.levels[index - 1];
   }
 
   private hideLevelNavButtons(): void {
@@ -271,6 +282,11 @@ export class LevelScreen {
   }
 
   private updateLevelNavButtons(solved: boolean): void {
+    // A timed run moves on from its results card, never by skipping levels on the board.
+    if (this.timed) {
+      this.hideLevelNavButtons();
+      return;
+    }
     const next = document.getElementById('next-level-btn');
     if (next) {
       const finalLevel = this.isFinalLevel();
@@ -325,6 +341,12 @@ export class LevelScreen {
       if (next) this.onNextLevel?.(next);
     }, options);
 
+    document.getElementById('timed-next-level-btn')?.addEventListener('click', () => {
+      if (!this.timed || !this.store.getState().result?.isSolved) return;
+      const next = this.nextCatalogLevel();
+      if (next) this.onNextLevel?.(next);
+    }, options);
+
     document.getElementById('prev-level-btn')?.addEventListener('click', () => {
       const previous = this.previousCatalogLevel();
       if (previous) this.onPreviousLevel?.(previous);
@@ -354,7 +376,7 @@ export class LevelScreen {
   /** Sync top dots, board badge, and sidebar footer to the catalog position. */
   private updateLevelProgressUI(): void {
     const index = this.catalogIndex();
-    const total = mainLevels.length;
+    const total = this.levels.length;
     const levelNumber = index >= 0 ? index + 1 : 1;
     const label = `Level ${levelNumber} <span class="dim">/ ${total}</span>`;
 
