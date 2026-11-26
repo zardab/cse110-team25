@@ -1,6 +1,7 @@
 
 import type { ScreenController } from "../screenTypes.ts";
 import { LevelSelectorView } from "./LevelSelectorView.ts";
+import type { StorageAdapter } from "../persistence/storageAdapter";
 import type { LevelConfig } from "../types/circuit";
 
 export class LevelSelectorController implements ScreenController {
@@ -11,6 +12,7 @@ export class LevelSelectorController implements ScreenController {
     height: number,
     levels: readonly LevelConfig[],
     onStartCutscene: (levelId: string) => void,
+    private readonly storage: Pick<StorageAdapter, "getProgress">,
   ) {
     this.view = new LevelSelectorView(
       width,
@@ -22,5 +24,9 @@ export class LevelSelectorController implements ScreenController {
 
   getView(): LevelSelectorView {
     return this.view;
+  }
+
+  start(): void {
+    this.view.updateProgress(this.storage.getProgress());
   }
 }

@@ -13,6 +13,7 @@ import { locateBreakerBoxController } from "./locateBreakerBoxController.ts";
 import { GateGuessController } from "../minigames/GateGuessController.ts";
 import { TutorialController } from "../Tutorial/TutorialController.ts";
 import { mainLevels } from "../content/levelCatalog";
+import type { StorageAdapter } from "../persistence/storageAdapter";
 
 type KonvaScreenId =
   | "menu"
@@ -34,6 +35,7 @@ export class SceneController implements ScreenSwitcher {
     private onLevel: (levelId: string) => void,
     private onMinigame1: () => void,
     private onMinigame2: () => void,
+    storage: Pick<StorageAdapter, "getProgress">,
   ) {
     const width = window.innerWidth;
     const height = window.innerHeight;
@@ -76,6 +78,7 @@ export class SceneController implements ScreenSwitcher {
         height,
         mainLevels,
         (id) => this.startLevelCutscene(id),
+        storage,
       ),
 
       locateBreakerBox: this.breakerController,

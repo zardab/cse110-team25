@@ -65,5 +65,5 @@ window.addEventListener("DOMContentLoaded", () => {
     console.warn("Minigame 2 is not connected yet.");
   };
 
-  const scene = new SceneController(openLevel, openMinigame1, openMinigame2);
+  const scene = new SceneController(openLevel, openMinigame1, openMinigame2, storage);
 });

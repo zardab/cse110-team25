@@ -41,6 +41,7 @@ NOT is left out of the game. It is the only one-input gate, so the wiring alone 
 
 ### 1.4 Runs, Lives and the Timer
 
+- Opening the minigame shows a How to Play screen (rules, a truth table of all six gates, and the best streak). The run and its clock start only when the player presses START. Play Again after a loss skips this screen.
 - A run starts with 3 lives and a streak of 0.
 - Each new circuit gets 15 seconds. The clock pauses once the circuit is solved and starts again at 15 when the player moves to the next circuit.
 - The run ends when the last life is lost or the clock reaches 0. Either way, the hidden gate is revealed.

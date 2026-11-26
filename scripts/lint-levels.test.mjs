@@ -63,6 +63,21 @@ describe('level linter CLI', () => {
     expect(result.stdout).toContain('1 level file(s); 0 failure(s)')
   })
 
+  it('rejects distinct level files with the same ID and identifies both files', () => {
+    const first = path.join(temp, 'first.json')
+    const second = path.join(temp, 'second.json')
+    writeFileSync(first, JSON.stringify(valid))
+    writeFileSync(second, JSON.stringify({ ...valid, title: 'Another AND Puzzle' }))
+
+    const result = run(second, first)
+
+    expect(result.status).toBe(1)
+    expect(result.stderr).toContain(
+      `FAIL ${path.relative(root, second)}: duplicate level ID ${JSON.stringify(valid.id)} (already used by ${path.relative(root, first)})`,
+    )
+    expect(result.stdout).toContain('2 level file(s); 1 failure(s)')
+  })
+
   it('supports fixed primary inputs for the runtime target-output contract', () => {
     const file = path.join(temp, 'and-only.json')
     writeFileSync(file, JSON.stringify({ ...valid, availableGatePalette: { AND: 1 } }))
