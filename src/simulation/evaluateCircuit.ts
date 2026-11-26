@@ -1,5 +1,7 @@
 import type {
     CircuitSlot,
+    CompiledCircuit,
+    FaultMap,
     LevelConfig,
     PrimaryInputValues,
     SignalSource,
@@ -30,19 +32,30 @@ function resolveSource(
     return wireStates[sourceSlot.outputWireId];
 }
 
-function evaluateWithInputs(
-    level: LevelConfig,
+/**
+ * Every wire's value for the given inputs. A slot listed in `faults` ignores its gate and
+ * drives its output wire with the stuck-at value instead.
+ */
+export function simulateCircuit(
+    circuit: CompiledCircuit,
     primaryInputs: PrimaryInputValues,
+    faults: FaultMap = {},
 ): Record<string, SignalState> {
     const wireStates: Record<string, SignalState> = { ...primaryInputs };
 
-    for (const slotId of level.executionOrder) {
-        const slot = level.slots[slotId];
+    for (const slotId of circuit.executionOrder) {
+        const slot = circuit.slots[slotId];
         if (!slot) {
             throw new Error(`Execution order references unknown slot: ${slotId}`);
         }
 
-        const inputStates = slot.inputs.map((source) => resolveSource(source, level.slots, wireStates));
+        const inputStates = slot.inputs.map((source) => resolveSource(source, circuit.slots, wireStates));
+        if (Object.hasOwn(faults, slotId)) {
+            const fault = faults[slotId];
+            // A stuck slot outputs its value; a slot acting like another gate evaluates as that gate.
+            wireStates[slot.outputWireId] = typeof fault === 'number' ? fault : evaluateGate(fault, inputStates);
+            continue;
+        }
         wireStates[slot.outputWireId] = slot.assignedGate === 'NULL'
             ? 'FLOATING'
             : evaluateGate(slot.assignedGate, inputStates);
@@ -56,7 +69,7 @@ export function evaluateCircuit(
     primaryInputs: PrimaryInputValues = level.inputValues,
 ): SimulationResult {
     const isComplete = Object.values(level.slots).every((slot) => slot.assignedGate !== 'NULL');
-    const wireStates = evaluateWithInputs(level, primaryInputs);
+    const wireStates = simulateCircuit(level, primaryInputs);
     const isSolved = isComplete && level.primaryOutputs.length > 0 && level.primaryOutputs.every(
         (outputId) => wireStates[outputId] === level.targetOutputs[outputId],
     );

@@ -1,0 +1,29 @@
+{
+  "id": "fault_01_two_lines",
+  "title": "Two Lines",
+  "primaryInputs": ["A", "B"],
+  "primaryOutputs": ["Z", "Y"],
+  "slots": {
+    "g_and": {
+      "id": "g_and",
+      "inputs": [
+        {"sourceType": "PRIMARY_INPUT", "sourceId": "A"},
+        {"sourceType": "PRIMARY_INPUT", "sourceId": "B"}
+      ],
+      "outputWireId": "Z",
+      "assignedGate": "AND"
+    },
+    "g_or": {
+      "id": "g_or",
+      "inputs": [
+        {"sourceType": "PRIMARY_INPUT", "sourceId": "A"},
+        {"sourceType": "PRIMARY_INPUT", "sourceId": "B"}
+      ],
+      "outputWireId": "Y",
+      "assignedGate": "OR"
+    }
+  },
+  "faults": {"g_or": 1},
+  "testBudget": 3,
+  "maxMistakes": 2
+}

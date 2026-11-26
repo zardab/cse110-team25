@@ -13,12 +13,16 @@ const BUTTON_HEIGHT = 60;
 // Negative moves title upward
 const TITLE_Y_OFFSET = -80;
 
+/** Minigame 2 isn't built yet; flip this to true to make its button clickable. */
+const MINIGAME_2_ENABLED = false;
+
 export class MainMenuView implements View {
   private group = new Konva.Group();
   private titleImage: Konva.Image;
   private button: Konva.Group;
   private minigame1Button: Konva.Group;
   private minigame2Button: Konva.Group;
+  private minigame3Button: Konva.Group;
 
   constructor(
     width: number,
@@ -26,6 +30,7 @@ export class MainMenuView implements View {
     onStartClick: () => void,
     onMinigame1Click: () => void,
     onMinigame2Click: () => void,
+    onMinigame3Click: () => void,
   ) {
     this.group.add(
       new Konva.Rect({
@@ -50,6 +55,7 @@ export class MainMenuView implements View {
     const createButton = (
       text: string,
       onClick: () => void,
+      enabled = true,
     ): Konva.Group => {
       const button = new Konva.Group({
         visible: false,
@@ -70,13 +76,15 @@ export class MainMenuView implements View {
           height: BUTTON_HEIGHT,
           text,
           fontSize: 24,
-          fill: "white",
+          // A disabled button is greyed out rather than hidden, so the menu layout stays put.
+          fill: enabled ? "white" : "#52525B",
           align: "center",
           verticalAlign: "middle",
         }),
       );
 
-      button.on("click tap", onClick);
+      if (enabled) button.on("click tap", onClick);
+      button.setAttr("enabled", enabled);
       this.group.add(button);
 
       return button;
@@ -90,6 +98,11 @@ export class MainMenuView implements View {
     this.minigame2Button = createButton(
       "MINIGAME 2",
       onMinigame2Click,
+      MINIGAME_2_ENABLED,
+    );
+    this.minigame3Button = createButton(
+      "MINIGAME 3",
+      onMinigame3Click,
     );
 
     const gap = height * 0.02;
@@ -99,7 +112,7 @@ export class MainMenuView implements View {
       imageHeight: number,
     ) => {
       const totalHeight =
-        imageHeight + gap * 3 + BUTTON_HEIGHT * 3;
+        imageHeight + gap * 4 + BUTTON_HEIGHT * 4;
 
       const top = (height - totalHeight) / 2;
       const centerX = (width - BUTTON_WIDTH) / 2;
@@ -129,9 +142,15 @@ export class MainMenuView implements View {
         y: top + imageHeight + gap * 3 + BUTTON_HEIGHT * 2,
       });
 
+      this.minigame3Button.position({
+        x: centerX,
+        y: top + imageHeight + gap * 4 + BUTTON_HEIGHT * 3,
+      });
+
       this.button.visible(true);
       this.minigame1Button.visible(true);
       this.minigame2Button.visible(true);
+      this.minigame3Button.visible(true);
 
       this.group.getLayer()?.batchDraw();
     };
@@ -164,6 +183,7 @@ export class MainMenuView implements View {
           this.button,
           this.minigame1Button,
           this.minigame2Button,
+          this.minigame3Button,
         ];
 
         let finished = 0;
@@ -191,6 +211,7 @@ export class MainMenuView implements View {
     this.button.opacity(1);
     this.minigame1Button.opacity(1);
     this.minigame2Button.opacity(1);
+    this.minigame3Button.opacity(1);
 
     this.group.visible(true);
     this.group.getLayer()?.batchDraw();

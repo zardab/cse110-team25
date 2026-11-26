@@ -1,0 +1,38 @@
+{
+  "id": "fault_03_needle",
+  "title": "Needle in the Table",
+  "primaryInputs": ["A", "B", "C", "D"],
+  "primaryOutputs": ["Z"],
+  "slots": {
+    "g_or": {
+      "id": "g_or",
+      "inputs": [
+        {"sourceType": "PRIMARY_INPUT", "sourceId": "A"},
+        {"sourceType": "PRIMARY_INPUT", "sourceId": "B"}
+      ],
+      "outputWireId": "w_or",
+      "assignedGate": "OR"
+    },
+    "g_and": {
+      "id": "g_and",
+      "inputs": [
+        {"sourceType": "PRIMARY_INPUT", "sourceId": "C"},
+        {"sourceType": "PRIMARY_INPUT", "sourceId": "D"}
+      ],
+      "outputWireId": "w_and",
+      "assignedGate": "AND"
+    },
+    "g_xor": {
+      "id": "g_xor",
+      "inputs": [
+        {"sourceType": "SLOT_OUTPUT", "sourceId": "g_or"},
+        {"sourceType": "SLOT_OUTPUT", "sourceId": "g_and"}
+      ],
+      "outputWireId": "Z",
+      "assignedGate": "XOR"
+    }
+  },
+  "faults": {"g_or": "XOR"},
+  "testBudget": 4,
+  "maxMistakes": 2
+}

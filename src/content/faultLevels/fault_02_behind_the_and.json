@@ -1,0 +1,29 @@
+{
+  "id": "fault_02_behind_the_and",
+  "title": "Behind the AND",
+  "primaryInputs": ["A", "B", "C"],
+  "primaryOutputs": ["Z"],
+  "slots": {
+    "g_xor": {
+      "id": "g_xor",
+      "inputs": [
+        {"sourceType": "PRIMARY_INPUT", "sourceId": "A"},
+        {"sourceType": "PRIMARY_INPUT", "sourceId": "B"}
+      ],
+      "outputWireId": "w_xor",
+      "assignedGate": "XOR"
+    },
+    "g_and": {
+      "id": "g_and",
+      "inputs": [
+        {"sourceType": "SLOT_OUTPUT", "sourceId": "g_xor"},
+        {"sourceType": "PRIMARY_INPUT", "sourceId": "C"}
+      ],
+      "outputWireId": "Z",
+      "assignedGate": "AND"
+    }
+  },
+  "faults": {"g_and": 0},
+  "testBudget": 3,
+  "maxMistakes": 2
+}

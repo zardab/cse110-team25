@@ -1,0 +1,53 @@
+{
+  "id": "fault_04_deep_chain",
+  "title": "Deep Chain",
+  "primaryInputs": ["A", "B", "C", "D"],
+  "primaryOutputs": ["Z", "Y"],
+  "slots": {
+    "g_nand": {
+      "id": "g_nand",
+      "inputs": [
+        {"sourceType": "PRIMARY_INPUT", "sourceId": "A"},
+        {"sourceType": "PRIMARY_INPUT", "sourceId": "B"}
+      ],
+      "outputWireId": "w_nand",
+      "assignedGate": "NAND"
+    },
+    "g_not": {
+      "id": "g_not",
+      "inputs": [{"sourceType": "PRIMARY_INPUT", "sourceId": "C"}],
+      "outputWireId": "w_not",
+      "assignedGate": "NOT"
+    },
+    "g_or": {
+      "id": "g_or",
+      "inputs": [
+        {"sourceType": "SLOT_OUTPUT", "sourceId": "g_nand"},
+        {"sourceType": "SLOT_OUTPUT", "sourceId": "g_not"}
+      ],
+      "outputWireId": "w_or",
+      "assignedGate": "OR"
+    },
+    "g_xor": {
+      "id": "g_xor",
+      "inputs": [
+        {"sourceType": "SLOT_OUTPUT", "sourceId": "g_or"},
+        {"sourceType": "PRIMARY_INPUT", "sourceId": "D"}
+      ],
+      "outputWireId": "Z",
+      "assignedGate": "XOR"
+    },
+    "g_and": {
+      "id": "g_and",
+      "inputs": [
+        {"sourceType": "SLOT_OUTPUT", "sourceId": "g_not"},
+        {"sourceType": "PRIMARY_INPUT", "sourceId": "D"}
+      ],
+      "outputWireId": "Y",
+      "assignedGate": "AND"
+    }
+  },
+  "faults": {"g_or": "AND"},
+  "testBudget": 4,
+  "maxMistakes": 2
+}

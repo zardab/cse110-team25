@@ -8,9 +8,11 @@ export type ScreenId =
   | { type: "levelSelector" }
   | { type: "locateBreakerBox" }
   | { type: "gateGuess" }
+  | { type: "faultFinder" }
   | { type: "level1" }
   | { type: "minigame1" }
-  | { type: "minigame2" };
+  | { type: "minigame2" }
+  | { type: "minigame3" };
   
 
 export interface View {

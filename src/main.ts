@@ -97,5 +97,10 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   };
 
-  const scene = new SceneController(openLevel, openMinigame1, openMinigame2, storage);
+  // Minigame 3 is "Fault Finder", a Konva screen inside the scene.
+  const openMinigame3 = () => {
+    scene.switchToScreen({ type: "faultFinder" });
+  };
+
+  const scene = new SceneController(openLevel, openMinigame1, openMinigame2, openMinigame3, storage);
 });

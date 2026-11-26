@@ -142,6 +142,22 @@ export class StorageAdapter {
     return this.write({ ...levels, [level.id]: next })
   }
 
+  /**
+   * Record completion and stars for a level that has no board to restore, such as a
+   * minigame level. Earned completion and best stars are kept, like `saveLevel`.
+   */
+  saveSummary(levelId: string, progress: LevelProgressSummary): boolean {
+    if (levelId.trim().length === 0 || !summary(progress)) return false
+    const levels = this.read()
+    if (!levels) return false
+    const previous = Object.hasOwn(levels, levelId) ? levels[levelId] : emptyProgress()
+    return this.write({ ...levels, [levelId]: {
+      completed: previous.completed || progress.completed,
+      stars: Math.max(previous.stars, progress.stars),
+      placements: previous.placements,
+    } })
+  }
+
   removeLevel(levelId: string): boolean {
     const levels = this.read()
     if (!levels) return false

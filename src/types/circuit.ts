@@ -41,10 +41,28 @@ export interface LevelDefinition {
   }>;
 }
 
-export interface LevelConfig extends Omit<LevelDefinition, 'availableGatePalette'> {
-  readonly availableGatePalette: Record<GateType, number>;
+/** A wired circuit whose slots have been ordered so each is evaluated after its sources. */
+export interface CompiledCircuit {
+  readonly primaryInputs: ReadonlyArray<string>;
+  readonly primaryOutputs: ReadonlyArray<string>;
+  readonly slots: Record<string, CircuitSlot>;
   readonly executionOrder: ReadonlyArray<string>;
 }
+
+export interface LevelConfig extends Omit<LevelDefinition, 'availableGatePalette'>, CompiledCircuit {
+  readonly availableGatePalette: Record<GateType, number>;
+}
+
+export type StuckAt = 0 | 1;
+
+/**
+ * How a faulty slot misbehaves: stuck at 0 or 1 (its output is forced to that value no matter
+ * its inputs), or a gate type it secretly acts like instead of its own (an AND acting like OR).
+ */
+export type Fault = StuckAt | GateType;
+
+/** Faults keyed by slot ID. */
+export type FaultMap = Readonly<Record<string, Fault>>;
 
 export interface SimulationResult {
   readonly isComplete: boolean;

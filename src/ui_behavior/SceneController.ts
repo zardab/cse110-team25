@@ -12,6 +12,7 @@ import { Cutscene2Controller } from "../Cutscenes/Cutscene2/Cutscene2Controller.
 import { LevelSelectorController } from "./LevelSelectorController.ts";
 import { locateBreakerBoxController } from "./locateBreakerBoxController.ts";
 import { GateGuessController } from "../minigames/GateGuessController.ts";
+import { FaultFinderController } from "../minigames/FaultFinderController.ts";
 import { TutorialController } from "../Tutorial/TutorialController.ts";
 import { mainLevels } from "../content/levelCatalog";
 import type { StorageAdapter } from "../persistence/storageAdapter";
@@ -23,7 +24,8 @@ type KonvaScreenId =
   | "tutorial"
   | "levelSelector"
   | "locateBreakerBox"
-  | "gateGuess";
+  | "gateGuess"
+  | "faultFinder";
 
 const LEVELS_PER_BREAKER_SCENE = 2;
 
@@ -39,6 +41,7 @@ export class SceneController implements ScreenSwitcher {
     private onLevel: (levelId: string) => void,
     private onMinigame1: () => void,
     private onMinigame2: () => void,
+    private onMinigame3: () => void,
     storage: Pick<StorageAdapter, "getProgress">,
   ) {
     const width = window.innerWidth;
@@ -94,6 +97,8 @@ export class SceneController implements ScreenSwitcher {
       locateBreakerBox: this.breakerController,
 
       gateGuess: new GateGuessController(this, width, height),
+
+      faultFinder: new FaultFinderController(this, width, height),
     };
 
     for (const controller of Object.values(this.screens)) {
@@ -170,6 +175,10 @@ export class SceneController implements ScreenSwitcher {
         this.showKonvaScreen("gateGuess");
         return;
 
+      case "faultFinder":
+        this.showKonvaScreen("faultFinder");
+        return;
+
       case "level1":
         if (mainLevels[0]) this.startLevelCutscene(mainLevels[0].id);
         return;
@@ -182,6 +191,11 @@ export class SceneController implements ScreenSwitcher {
       case "minigame2":
         this.hideAllScreens();
         this.onMinigame2();
+        return;
+
+      case "minigame3":
+        this.hideAllScreens();
+        this.onMinigame3();
         return;
     }
   }
