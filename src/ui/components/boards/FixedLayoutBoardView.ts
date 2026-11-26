@@ -114,7 +114,10 @@ export class FixedLayoutBoardView {
       if (glow) this.layer.add(new Konva.Circle({ x, y, radius: 24, fill: glow, opacity: 0.6 }));
       this.layer.add(new Konva.Circle({ x, y, radius: 18, fill: active }));
       this.layer.add(new Konva.Text({
-        x, y, text: icon, fontSize: iconSize, offsetX: iconSize / 2, offsetY: iconSize / 2,
+        x: x - 18, y: y - 18,
+        width: 36, height: 36,
+        text: icon, fontSize: iconSize,
+        align: 'center', verticalAlign: 'middle',
       }));
     }
 

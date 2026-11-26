@@ -280,12 +280,14 @@ export class TutorialView implements View {
 		parent.add(new Konva.Circle({ x, y, radius: 23, fill }));
 		parent.add(
 			new Konva.Text({
-				x,
-				y,
+				x: x - 23,
+				y: y - 23,
+				width: 46,
+				height: 46,
 				text: OUTPUT_RULES[kind].icon,
 				fontSize: 26,
-				offsetX: 13,
-				offsetY: 13,
+				align: "center",
+				verticalAlign: "middle",
 			}),
 		);
 	}
