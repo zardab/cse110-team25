@@ -19,11 +19,21 @@ window.addEventListener("DOMContentLoaded", () => {
     activeLevel = new LevelScreen({
       level,
       storage,
-      onNextLevel: showLevel,
-      onPreviousLevel: showLevel,
+      onNextLevel: (next) => navigateLevel(level.id, next.id),
+      onGameComplete: showEnding,
+      onPreviousLevel: (previous) => navigateLevel(level.id, previous.id),
       onMainMenu: showMainMenu,
       onTutorial: showTutorial,
     });
+  };
+
+  // Show a breaker scene only when navigation crosses into another pair.
+  const navigateLevel = (previousLevelId: string, levelId: string) => {
+    activeLevel?.destroy();
+    activeLevel = undefined;
+    appContainer.style.display = "none";
+    introContainer.style.display = "";
+    scene.startLevelCutscene(levelId, previousLevelId);
   };
 
   // Shows How to Play over the current level, then returns to it untouched.
@@ -43,6 +53,15 @@ window.addEventListener("DOMContentLoaded", () => {
     appContainer.style.display = "none";
     introContainer.style.display = "";
     scene.switchToScreen({ type: "menu" });
+  };
+
+  // Leaves the final level and starts the ending cutscene.
+  const showEnding = () => {
+    activeLevel?.destroy();
+    activeLevel = undefined;
+    appContainer.style.display = "none";
+    introContainer.style.display = "";
+    scene.switchToScreen({ type: "cutscene2" });
   };
 
   // Opens a level by ID
