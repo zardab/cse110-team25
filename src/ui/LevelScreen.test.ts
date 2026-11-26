@@ -139,19 +139,34 @@ describe('Main game level integration', () => {
     expect(document.querySelector('[data-gate="AND"] .gate-count')?.textContent).toBe('×0');
   });
 
-  it('saves completion and resets only the selected level board', () => {
+  it('replays a completed level from its starting board while preserving completion', () => {
     const otherLevel = { completed: true, stars: 2, placements: { slot_xor: 'XOR' } } as const;
     expect(storage.saveLevel(xor, otherLevel)).toBe(true);
     screen = new LevelScreen({ level: foundations, storage });
     options.onPlaceGate('slot_and', 'AND');
     options.onPlaceGate('slot_or', 'OR');
     expect(storage.getProgress()[foundations.id].completed).toBe(true);
+    screen.destroy();
+
+    screen = new LevelScreen({ level: foundations, storage: new StorageAdapter() });
+    expect(render.mock.lastCall![0].slots).toMatchObject({
+      slot_and: { assignedGate: 'AND' },
+      slot_or: { assignedGate: 'OR' },
+    });
 
     document.getElementById('reset-btn')!.click();
     expect(render.mock.lastCall![0].id).toBe(foundations.id);
     expect(storage.loadLevel(foundations)).toMatchObject({
       completed: true,
       placements: { slot_not: 'NOT', slot_and: 'NULL', slot_or: 'NULL' },
+    });
+
+    options.onPlaceGate('slot_and', 'AND');
+    options.onPlaceGate('slot_or', 'OR');
+    expect(render.mock.lastCall![1].out_Y).toBe(1);
+    expect(storage.loadLevel(foundations)).toMatchObject({
+      completed: true,
+      placements: { slot_and: 'AND', slot_or: 'OR' },
     });
     expect(storage.loadLevel(xor)).toEqual(otherLevel);
   });

@@ -2,6 +2,7 @@
 import Konva from "konva";
 import type { View } from "../screenTypes.ts";
 import menuImageUrl from "../assets/levelSelectorMenu.png";
+import type { LevelProgressSummary } from "../persistence/storageAdapter";
 import type { LevelConfig } from "../types/circuit";
 
 const IMAGE = { width: 800, height: 550 };
@@ -21,6 +22,7 @@ const BUTTON_STYLE = {
 
 export class LevelSelectorView implements View {
   private group = new Konva.Group();
+  private readonly levelLabels = new Map<string, { label: string; text: Konva.Text }>();
 
   constructor(
     width: number,
@@ -100,19 +102,19 @@ export class LevelSelectorView implements View {
       }),
     );
 
-    button.add(
-      new Konva.Text({
-        x,
-        y,
-        width: BUTTON_STYLE.width,
-        height: BUTTON_STYLE.height,
-        text: level.label,
-        fontSize: BUTTON_STYLE.fontSize,
-        fill: "black",
-        align: "center",
-        verticalAlign: "middle",
-      }),
-    );
+    const text = new Konva.Text({
+      x,
+      y,
+      width: BUTTON_STYLE.width,
+      height: BUTTON_STYLE.height,
+      text: level.label,
+      fontSize: BUTTON_STYLE.fontSize,
+      fill: "black",
+      align: "center",
+      verticalAlign: "middle",
+    });
+    button.add(text);
+    this.levelLabels.set(level.id, { label: level.label, text });
 
     button.on("click tap", (event) => {
       event.cancelBubble = true;
@@ -122,6 +124,12 @@ export class LevelSelectorView implements View {
     });
 
     return button;
+  }
+
+  updateProgress(progress: Readonly<Record<string, LevelProgressSummary>>): void {
+    for (const [id, { label, text }] of this.levelLabels) {
+      text.text(progress[id]?.completed ? `${label} · Completed` : label);
+    }
   }
 
   show(): void {
