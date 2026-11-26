@@ -22,6 +22,17 @@ window.addEventListener("DOMContentLoaded", () => {
       onNextLevel: showLevel,
       onPreviousLevel: showLevel,
       onMainMenu: showMainMenu,
+      onTutorial: showTutorial,
+    });
+  };
+
+  // Shows How to Play over the current level, then returns to it untouched.
+  const showTutorial = () => {
+    appContainer.style.display = "none";
+    introContainer.style.display = "";
+    scene.showTutorialFromLevel(() => {
+      introContainer.style.display = "none";
+      appContainer.style.display = "flex";
     });
   };
 
