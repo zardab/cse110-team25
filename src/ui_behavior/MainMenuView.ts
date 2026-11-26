@@ -13,9 +13,6 @@ const BUTTON_HEIGHT = 60;
 // Negative moves title upward
 const TITLE_Y_OFFSET = -80;
 
-/** Minigame 2 isn't built yet; flip this to true to make its button clickable. */
-const MINIGAME_2_ENABLED = false;
-
 export class MainMenuView implements View {
   private group = new Konva.Group();
   private titleImage: Konva.Image;
@@ -98,7 +95,6 @@ export class MainMenuView implements View {
     this.minigame2Button = createButton(
       "MINIGAME 2",
       onMinigame2Click,
-      MINIGAME_2_ENABLED,
     );
     this.minigame3Button = createButton(
       "MINIGAME 3",
