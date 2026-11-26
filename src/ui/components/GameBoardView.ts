@@ -96,7 +96,12 @@ export class GameBoardView {
       const glow = met ? (target === 0 ? '#D4D4D8' : '#FEF08A') : null;
       if (glow) this.layer.add(new Konva.Circle({ x, y, radius: 28, fill: glow, opacity: 0.6 }));
       this.layer.add(new Konva.Circle({ x, y, radius: 22, fill: active }));
-      this.layer.add(new Konva.Text({ x, y, text: icon, fontSize: 24, offsetX: 12, offsetY: 12 }));
+      this.layer.add(new Konva.Text({
+        x: x - 22, y: y - 22,
+        width: 44, height: 44,
+        text: icon, fontSize: 24,
+        align: 'center', verticalAlign: 'middle',
+      }));
     });
     for (const [id, point] of inputs) {
       const value = level.inputValues[id];
