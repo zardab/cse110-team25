@@ -1,0 +1,49 @@
+{
+  "id": "timed_05_countdown",
+  "title": "Final Countdown",
+  "difficulty": "HARD",
+  "availableGatePalette": { "AND": 1, "NAND": 1, "OR": 1, "XOR": 1, "XNOR": 1 },
+  "primaryInputs": ["in_A", "in_B", "in_C", "in_D"],
+  "primaryOutputs": ["out_Y", "out_Z"],
+  "inputValues": { "in_A": 1, "in_B": 1, "in_C": 0, "in_D": 1 },
+  "slots": {
+    "slot_1": {
+      "id": "slot_1",
+      "inputs": [
+        { "sourceType": "PRIMARY_INPUT", "sourceId": "in_A" },
+        { "sourceType": "PRIMARY_INPUT", "sourceId": "in_B" }
+      ],
+      "outputWireId": "wire_1",
+      "assignedGate": "NULL"
+    },
+    "slot_2": {
+      "id": "slot_2",
+      "inputs": [
+        { "sourceType": "PRIMARY_INPUT", "sourceId": "in_C" },
+        { "sourceType": "PRIMARY_INPUT", "sourceId": "in_D" }
+      ],
+      "outputWireId": "wire_2",
+      "assignedGate": "NULL"
+    },
+    "slot_3": {
+      "id": "slot_3",
+      "inputs": [
+        { "sourceType": "SLOT_OUTPUT", "sourceId": "slot_1" },
+        { "sourceType": "SLOT_OUTPUT", "sourceId": "slot_2" }
+      ],
+      "outputWireId": "out_Y",
+      "assignedGate": "NULL"
+    },
+    "slot_4": {
+      "id": "slot_4",
+      "inputs": [
+        { "sourceType": "SLOT_OUTPUT", "sourceId": "slot_1" },
+        { "sourceType": "PRIMARY_INPUT", "sourceId": "in_D" }
+      ],
+      "outputWireId": "out_Z",
+      "assignedGate": "NULL"
+    }
+  },
+  "hints": [{ "message": "slot_1 feeds both bulbs. Decide what it outputs first." }],
+  "targetOutputs": { "out_Y": 1, "out_Z": 0 }
+}

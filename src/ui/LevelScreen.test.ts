@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
 import { LevelScreen } from './LevelScreen';
 import { mainLevels } from '../content/levelCatalog';
+import { timedLevelSeconds, timedLevels } from '../content/timedLevelCatalog';
 import { loadLevel } from '../content/levelLoader';
 import { StorageAdapter } from '../persistence/storageAdapter';
 import indexHtml from '../../index.html?raw';
@@ -489,6 +490,111 @@ describe('Timed minigame', () => {
     expect(document.getElementById('timer-display')!.textContent).toBe('15s');
     expect(document.getElementById('game-over-overlay')!.hidden).toBe(true);
     expect(lastRender().gate).toBe('NULL');
+  });
+});
+
+describe('Minigame 2 levels', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    render.mockClear();
+    document.body.innerHTML = `
+      <div id="konva-container"></div>
+      <div id="level-title"></div>
+      <div id="progress-dots"></div>
+      <div id="palette-grid"></div>
+      <div id="timer-display"></div>
+      <button id="prev-level-btn" hidden></button>
+      <button id="next-level-btn" hidden></button>
+      <div id="game-over-overlay" hidden>
+        <h1 id="game-over-title"></h1>
+        <p id="game-over-message"></p>
+        <button id="restart-minigame-btn"></button>
+        <button id="timed-next-level-btn" hidden></button>
+      </div>
+      <div id="gate-info-overlay" hidden>
+        <div id="gate-info-modal">
+          <h2 class="gate-info-title"></h2>
+          <p class="gate-info-subtitle"></p>
+          <p class="gate-info-description"></p>
+          <p class="gate-info-fun-fact"></p>
+          <img class="gate-info-graphic" />
+          <div class="gate-info-input-labels"></div>
+          <div class="gate-info-truth"></div>
+          <button id="gate-info-dismiss"></button>
+        </div>
+      </div>
+      <div id="game-sidebar" hidden>
+        <div id="sidebar-backdrop"></div>
+        <button id="sidebar-close-btn"></button>
+      </div>
+      <button id="undo-btn"></button>
+    `;
+  });
+
+  afterEach(() => {
+    vi.clearAllTimers();
+    vi.useRealTimers();
+  });
+
+  const timed = (index: number, onNextLevel = vi.fn()) => {
+    new LevelScreen({
+      level: timedLevels[index],
+      levels: timedLevels,
+      timed: true,
+      durationSeconds: timedLevelSeconds[timedLevels[index].id],
+      onNextLevel,
+    });
+    return onNextLevel;
+  };
+
+  it('counts progress against its own five levels, not the story', () => {
+    timed(1);
+    expect(document.getElementById('level-title')!.textContent).toBe('Level 2 / 5');
+    expect(document.querySelectorAll('#progress-dots .dot')).toHaveLength(5);
+  });
+
+  it('uses the per-level clock', () => {
+    timed(4);
+    expect(document.getElementById('timer-display')!.textContent).toBe('30s');
+  });
+
+  it('offers Next Level on the results card after a win and moves on to the next level', () => {
+    const onNextLevel = timed(0);
+    const next = document.getElementById('timed-next-level-btn')!;
+    expect(next.hidden).toBe(true);
+
+    options.onPlaceGate('slot_1', 'OR');
+
+    expect(document.getElementById('game-over-title')!.textContent).toBe('Level Complete!');
+    expect(next.hidden).toBe(false);
+    next.click();
+    expect(onNextLevel).toHaveBeenCalledWith(timedLevels[1]);
+  });
+
+  it('does not offer Next Level when time runs out', () => {
+    timed(0);
+    vi.advanceTimersByTime(15000);
+    expect(document.getElementById('game-over-title')!.textContent).toBe("Time's Up!");
+    expect(document.getElementById('timed-next-level-btn')!.hidden).toBe(true);
+  });
+
+  it('ends on the last level with no Next Level', () => {
+    timed(4);
+    options.onPlaceGate('slot_1', 'AND');
+    options.onPlaceGate('slot_2', 'NAND');
+    options.onPlaceGate('slot_3', 'XNOR');
+    options.onPlaceGate('slot_4', 'XOR');
+
+    expect(document.getElementById('game-over-title')!.textContent).toBe('All Levels Complete!');
+    expect(document.getElementById('timed-next-level-btn')!.hidden).toBe(true);
+  });
+
+  it('keeps the board Prev and Next buttons hidden so levels cannot be skipped', () => {
+    timed(2);
+    options.onPlaceGate('slot_1', 'AND');
+    options.onPlaceGate('slot_2', 'NAND');
+    expect(document.getElementById('next-level-btn')!.hidden).toBe(true);
+    expect(document.getElementById('prev-level-btn')!.hidden).toBe(true);
   });
 });
 

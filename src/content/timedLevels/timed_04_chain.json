@@ -1,0 +1,38 @@
+{
+  "id": "timed_04_chain",
+  "title": "Chain Reaction",
+  "difficulty": "HARD",
+  "availableGatePalette": { "OR": 1, "NOR": 1, "XOR": 1, "NOT": 1 },
+  "primaryInputs": ["in_A", "in_B", "in_C"],
+  "primaryOutputs": ["out_Y"],
+  "inputValues": { "in_A": 0, "in_B": 1, "in_C": 1 },
+  "slots": {
+    "slot_1": {
+      "id": "slot_1",
+      "inputs": [
+        { "sourceType": "PRIMARY_INPUT", "sourceId": "in_A" },
+        { "sourceType": "PRIMARY_INPUT", "sourceId": "in_B" }
+      ],
+      "outputWireId": "wire_1",
+      "assignedGate": "NULL"
+    },
+    "slot_2": {
+      "id": "slot_2",
+      "inputs": [
+        { "sourceType": "SLOT_OUTPUT", "sourceId": "slot_1" },
+        { "sourceType": "PRIMARY_INPUT", "sourceId": "in_C" }
+      ],
+      "outputWireId": "wire_2",
+      "assignedGate": "NULL"
+    },
+    "slot_3": {
+      "id": "slot_3",
+      "allowedGates": ["NOT"],
+      "inputs": [{ "sourceType": "SLOT_OUTPUT", "sourceId": "slot_2" }],
+      "outputWireId": "out_Y",
+      "assignedGate": "NULL"
+    }
+  },
+  "hints": [{ "message": "Work backwards: the NOT at the end needs a 0 to light the bulb." }],
+  "targetOutputs": { "out_Y": 1 }
+}

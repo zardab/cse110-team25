@@ -1,0 +1,31 @@
+{
+  "id": "timed_03_two_lights",
+  "title": "Lights Out",
+  "difficulty": "EASY",
+  "availableGatePalette": { "AND": 1, "NAND": 1, "OR": 1, "XOR": 1 },
+  "primaryInputs": ["in_A", "in_B", "in_C", "in_D"],
+  "primaryOutputs": ["out_X", "out_Y"],
+  "inputValues": { "in_A": 1, "in_B": 0, "in_C": 1, "in_D": 1 },
+  "slots": {
+    "slot_1": {
+      "id": "slot_1",
+      "inputs": [
+        { "sourceType": "PRIMARY_INPUT", "sourceId": "in_A" },
+        { "sourceType": "PRIMARY_INPUT", "sourceId": "in_B" }
+      ],
+      "outputWireId": "out_X",
+      "assignedGate": "NULL"
+    },
+    "slot_2": {
+      "id": "slot_2",
+      "inputs": [
+        { "sourceType": "PRIMARY_INPUT", "sourceId": "in_C" },
+        { "sourceType": "PRIMARY_INPUT", "sourceId": "in_D" }
+      ],
+      "outputWireId": "out_Y",
+      "assignedGate": "NULL"
+    }
+  },
+  "hints": [{ "message": "Both bulbs must stay off. Each gate can only be used once." }],
+  "targetOutputs": { "out_X": 0, "out_Y": 0 }
+}

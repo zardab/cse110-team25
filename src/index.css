@@ -402,7 +402,14 @@ body {
   color: #A1A1AA;
 }
 
-#restart-minigame-btn {
+.game-over-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+}
+
+#restart-minigame-btn,
+#timed-next-level-btn {
   padding: 10px 18px;
   border: none;
   border-radius: 8px;
@@ -410,6 +417,16 @@ body {
   font-weight: 600;
   background: #FAFAFA;
   color: #18181B;
+}
+
+#timed-next-level-btn[hidden] {
+  display: none;
+}
+
+/* With a level to move on to, Next Level is the main action and Play Again steps back. */
+.game-over-actions:has(#timed-next-level-btn:not([hidden])) #restart-minigame-btn {
+  background: #27272A;
+  color: #FAFAFA;
 }
 
 /* --- GAME SIDEBAR --- */

@@ -3,6 +3,7 @@ import { SceneController } from "./ui_behavior/SceneController";
 import { LevelScreen } from "./ui/LevelScreen";
 import { StorageAdapter } from "./persistence/storageAdapter";
 import { mainLevels } from "./content/levelCatalog";
+import { timedLevelSeconds, timedLevels } from "./content/timedLevelCatalog";
 import type { LevelConfig } from "./types/circuit";
 
 window.addEventListener("DOMContentLoaded", () => {
@@ -80,18 +81,21 @@ window.addEventListener("DOMContentLoaded", () => {
     scene.switchToScreen({ type: "gateGuess" });
   };
   
-  // Minigame 2: Timed circuit challenge
-  const openMinigame2 = () => {
+  // Minigame 2: Timed circuit challenge, played through its own five levels in order.
+  const openMinigame2 = (level: LevelConfig = timedLevels[0]) => {
     activeLevel?.destroy();
 
     // Hide the main menu and display the game.
     introContainer.style.display = "none";
     appContainer.style.display = "flex";
 
-    // Launch a fresh timed level without changing story progress.
+    // No storage: a timed run never changes story progress or saves a board.
     activeLevel = new LevelScreen({
+      level,
+      levels: timedLevels,
       timed: true,
-      durationSeconds: 15,
+      durationSeconds: timedLevelSeconds[level.id],
+      onNextLevel: (next) => openMinigame2(next),
       onMainMenu: showMainMenu,
       onTutorial: showTutorial,
     });

@@ -1,0 +1,29 @@
+{
+  "id": "timed_02_flip",
+  "title": "Flip It",
+  "difficulty": "EASY",
+  "availableGatePalette": { "AND": 1, "XOR": 1, "NOT": 1 },
+  "primaryInputs": ["in_A", "in_B"],
+  "primaryOutputs": ["out_Y"],
+  "inputValues": { "in_A": 1, "in_B": 1 },
+  "slots": {
+    "slot_1": {
+      "id": "slot_1",
+      "inputs": [
+        { "sourceType": "PRIMARY_INPUT", "sourceId": "in_A" },
+        { "sourceType": "PRIMARY_INPUT", "sourceId": "in_B" }
+      ],
+      "outputWireId": "wire_1",
+      "assignedGate": "NULL"
+    },
+    "slot_2": {
+      "id": "slot_2",
+      "allowedGates": ["NOT"],
+      "inputs": [{ "sourceType": "SLOT_OUTPUT", "sourceId": "slot_1" }],
+      "outputWireId": "out_Y",
+      "assignedGate": "NULL"
+    }
+  },
+  "hints": [{ "message": "The NOT gate flips whatever reaches it, so the first gate must output 0." }],
+  "targetOutputs": { "out_Y": 1 }
+}
