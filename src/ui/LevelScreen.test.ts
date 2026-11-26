@@ -447,6 +447,37 @@ describe('Timed minigame', () => {
     expect(document.getElementById('timer-display')!.textContent).toBe('13s');
   });
 
+  it('pauses the timer while the tutorial is open and resumes it on return', () => {
+    document.getElementById('game-sidebar')!.insertAdjacentHTML('beforeend', '<button id="tutorial-btn"></button>');
+    let onReturn: (() => void) | undefined;
+    new LevelScreen({ timed: true, onTutorial: (back) => { onReturn = back; } });
+    const timer = document.getElementById('timer-display')!;
+
+    vi.advanceTimersByTime(3000);
+    document.getElementById('tutorial-btn')!.click();
+    vi.advanceTimersByTime(20000);
+    expect(timer.textContent).toBe('12s');
+    expect(document.getElementById('game-over-overlay')!.hidden).toBe(true);
+
+    onReturn!();
+    vi.advanceTimersByTime(2000);
+    expect(timer.textContent).toBe('10s');
+  });
+
+  it('does not restart the timer if the minigame was left during the tutorial', () => {
+    document.getElementById('game-sidebar')!.insertAdjacentHTML('beforeend', '<button id="tutorial-btn"></button>');
+    let onReturn: (() => void) | undefined;
+    const screen = new LevelScreen({ timed: true, onTutorial: (back) => { onReturn = back; } });
+    const timer = document.getElementById('timer-display')!;
+
+    vi.advanceTimersByTime(1000);
+    document.getElementById('tutorial-btn')!.click();
+    screen.destroy();
+    onReturn!();
+    vi.advanceTimersByTime(5000);
+    expect(timer.textContent).toBe('14s');
+  });
+
   it('Play Again resets the timer', () => {
     new LevelScreen({ timed: true });
 
