@@ -355,7 +355,16 @@ export class GateGuessView implements View {
     const bulb = { x: 475, y: outY };
     if (clue.out) card.add(new Konva.Circle({ ...bulb, radius: 32, fill: '#FEF08A', opacity: 0.6 }));
     card.add(new Konva.Circle({ ...bulb, radius: 25, fill: clue.out ? COLOR.bulbOn : COLOR.bulbOff }));
-    card.add(new Konva.Text({ ...bulb, text: '💡', fontSize: 26, offsetX: 13, offsetY: 13 }));
+    card.add(new Konva.Text({
+      x: bulb.x - 25,
+      y: bulb.y - 25,
+      width: 50,
+      height: 50,
+      text: '💡',
+      fontSize: 26,
+      align: 'center',
+      verticalAlign: 'middle',
+    }));
     card.add(new Konva.Text({
       x: bulb.x - 50, y: bulb.y + 38, width: 100, align: 'center', text: `OUT = ${clue.out}`,
       fontSize: 17, fontStyle: 'bold', fontFamily: FONT, fill: COLOR.ink,
