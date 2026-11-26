@@ -40,11 +40,6 @@
   "slots": {
     "slot_and_ab": {
       "id": "slot_and_ab",
-      "allowedGates": [
-        "AND",
-        "OR",
-        "NOR"
-      ],
       "inputs": [
         {
           "sourceType": "PRIMARY_INPUT",
@@ -101,11 +96,6 @@
     },
     "slot_m1": {
       "id": "slot_m1",
-      "allowedGates": [
-        "AND",
-        "NAND",
-        "NOR"
-      ],
       "inputs": [
         {
           "sourceType": "SLOT_OUTPUT",
@@ -136,11 +126,6 @@
     },
     "slot_m3": {
       "id": "slot_m3",
-      "allowedGates": [
-        "AND",
-        "NAND",
-        "NOR"
-      ],
       "inputs": [
         {
           "sourceType": "SLOT_OUTPUT",

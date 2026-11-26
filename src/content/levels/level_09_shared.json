@@ -36,11 +36,6 @@
   "slots": {
     "slot_p": {
       "id": "slot_p",
-      "allowedGates": [
-        "AND",
-        "OR",
-        "XOR"
-      ],
       "inputs": [
         {
           "sourceType": "PRIMARY_INPUT",
@@ -56,11 +51,6 @@
     },
     "slot_q": {
       "id": "slot_q",
-      "allowedGates": [
-        "OR",
-        "XOR",
-        "NAND"
-      ],
       "inputs": [
         {
           "sourceType": "PRIMARY_INPUT",

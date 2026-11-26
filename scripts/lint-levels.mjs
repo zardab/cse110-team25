@@ -48,12 +48,19 @@ async function main() {
       failures += 1
     }
   }
+  const filesByLevelId = new Map()
   for (const file of [...files].sort()) {
+    const relativeFile = path.relative(process.cwd(), file)
     try {
       const result = lintLevel(await readFile(file, 'utf8'), { primaryInputs })
-      console.log(`PASS ${path.relative(process.cwd(), file)} (${result.levelId}): solvable for inputs ${JSON.stringify(result.primaryInputs)}`)
+      const firstFile = filesByLevelId.get(result.levelId)
+      if (firstFile !== undefined) {
+        throw new Error(`duplicate level ID ${JSON.stringify(result.levelId)} (already used by ${firstFile})`)
+      }
+      filesByLevelId.set(result.levelId, relativeFile)
+      console.log(`PASS ${relativeFile} (${result.levelId}): solvable for inputs ${JSON.stringify(result.primaryInputs)}`)
     } catch (error) {
-      console.error(`FAIL ${path.relative(process.cwd(), file)}: ${error.message}`)
+      console.error(`FAIL ${relativeFile}: ${error.message}`)
       failures += 1
     }
   }

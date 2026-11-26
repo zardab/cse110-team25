@@ -8,19 +8,26 @@ import type {
 
 import { MainMenuController } from "./MainMenuController.ts";
 import { Cutscene1Controller } from "../Cutscenes/Cutscene1/Cutscene1Controller.ts";
+import { Cutscene2Controller } from "../Cutscenes/Cutscene2/Cutscene2Controller.ts";
 import { LevelSelectorController } from "./LevelSelectorController.ts";
 import { locateBreakerBoxController } from "./locateBreakerBoxController.ts";
 import { GateGuessController } from "../minigames/GateGuessController.ts";
 import { FaultFinderController } from "../minigames/FaultFinderController.ts";
+import { TutorialController } from "../Tutorial/TutorialController.ts";
 import { mainLevels } from "../content/levelCatalog";
+import type { StorageAdapter } from "../persistence/storageAdapter";
 
 type KonvaScreenId =
   | "menu"
   | "cutscene1"
+  | "cutscene2"
+  | "tutorial"
   | "levelSelector"
   | "locateBreakerBox"
   | "gateGuess"
   | "faultFinder";
+
+const LEVELS_PER_BREAKER_SCENE = 2;
 
 export class SceneController implements ScreenSwitcher {
   private stage: Konva.Stage;
@@ -28,12 +35,14 @@ export class SceneController implements ScreenSwitcher {
   private screens: Record<KonvaScreenId, ScreenController>;
 
   private breakerController: locateBreakerBoxController;
+  private tutorialController: TutorialController;
 
   constructor(
     private onLevel: (levelId: string) => void,
     private onMinigame1: () => void,
     private onMinigame2: () => void,
     private onMinigame3: () => void,
+    storage: Pick<StorageAdapter, "getProgress">,
   ) {
     const width = window.innerWidth;
     const height = window.innerHeight;
@@ -54,20 +63,35 @@ export class SceneController implements ScreenSwitcher {
       (levelId) => this.openLevel(levelId),
     );
 
+    this.tutorialController = new TutorialController(
+      width,
+      height,
+      () => this.showKonvaScreen("levelSelector"),
+    );
+
     this.screens = {
       menu: new MainMenuController(this, width, height),
 
       cutscene1: new Cutscene1Controller(
         width,
         height,
-        () => this.showKonvaScreen("levelSelector"),
+        () => this.showKonvaScreen("tutorial"),
       ),
+
+      cutscene2: new Cutscene2Controller(
+        width,
+        height,
+        () => this.showKonvaScreen("menu"),
+      ),
+
+      tutorial: this.tutorialController,
 
       levelSelector: new LevelSelectorController(
         width,
         height,
         mainLevels,
         (id) => this.startLevelCutscene(id),
+        storage,
       ),
 
       locateBreakerBox: this.breakerController,
@@ -84,24 +108,26 @@ export class SceneController implements ScreenSwitcher {
     this.showKonvaScreen("menu");
   }
 
-  // Level Selector -> Flashlight cutscene
-  private startLevelCutscene(levelId: string): void {
-    const levelIndex = mainLevels.findIndex(
-      (level) => level.id === levelId,
-    );
+  private breakerSceneNumber(levelId: string): number | undefined {
+    const index = mainLevels.findIndex((level) => level.id === levelId);
+    return index < 0 ? undefined : Math.floor(index / LEVELS_PER_BREAKER_SCENE) + 1;
+  }
 
-    if (levelIndex === -1) {
+  // A selection always starts its breaker scene. Navigation within a pair does not.
+  public startLevelCutscene(levelId: string, previousLevelId?: string): void {
+    const breakerSceneNumber = this.breakerSceneNumber(levelId);
+    if (breakerSceneNumber === undefined) {
       console.error(`Unknown level: ${levelId}`);
       return;
     }
 
-    const levelNumber = levelIndex + 1;
+    if (previousLevelId !== undefined &&
+        this.breakerSceneNumber(previousLevelId) === breakerSceneNumber) {
+      this.openLevel(levelId);
+      return;
+    }
 
-    this.breakerController.setLevel(
-      levelNumber,
-      levelId,
-    );
-
+    this.breakerController.setBreakerScene(breakerSceneNumber, levelId);
     this.showKonvaScreen("locateBreakerBox");
   }
 
@@ -129,6 +155,14 @@ export class SceneController implements ScreenSwitcher {
         this.showKonvaScreen("cutscene1");
         return;
 
+      case "cutscene2":
+        this.showKonvaScreen("cutscene2");
+        return;
+
+      case "tutorial":
+        this.showKonvaScreen("tutorial");
+        return;
+
       case "levelSelector":
         this.showKonvaScreen("levelSelector");
         return;
@@ -146,7 +180,7 @@ export class SceneController implements ScreenSwitcher {
         return;
 
       case "level1":
-        this.startLevelCutscene("level1");
+        if (mainLevels[0]) this.startLevelCutscene(mainLevels[0].id);
         return;
 
       case "minigame1":
@@ -164,6 +198,18 @@ export class SceneController implements ScreenSwitcher {
         this.onMinigame3();
         return;
     }
+  }
+
+  /** Opens How to Play from inside a level; its button hides the scene and calls onBack. */
+  public showTutorialFromLevel(onBack: () => void): void {
+    this.tutorialController.setExit({
+      label: "Back to level",
+      onExit: () => {
+        this.hideAllScreens();
+        onBack();
+      },
+    });
+    this.showKonvaScreen("tutorial");
   }
 
   private hideAllScreens(): void {

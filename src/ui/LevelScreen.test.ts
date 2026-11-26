@@ -84,9 +84,21 @@ describe('Main game level integration', () => {
       <button id="reset-btn"></button>
       <button id="undo-btn"></button>
       <button id="menu-btn"></button>
+      <div id="gate-info-overlay" hidden>
+        <div id="gate-info-modal">
+          <h2 class="gate-info-title"></h2>
+          <p class="gate-info-subtitle"></p>
+          <p class="gate-info-description"></p>
+          <p class="gate-info-fun-fact"></p>
+          <img class="gate-info-graphic" />
+          <div class="gate-info-input-labels"></div>
+          <div class="gate-info-truth"></div>
+          <button id="gate-info-dismiss"></button>
+        </div>
+      </div>
       <div id="game-sidebar" hidden>
         <button id="sidebar-close-btn"></button>
-        <button id="difficulty-toggle" data-mode="EASY"></button>
+        <button id="sidebar-restart-btn"></button>
       </div>
     `;
   });
@@ -96,7 +108,6 @@ describe('Main game level integration', () => {
   it('closes the sidebar on leaving a level and binds each control once on reopening', () => {
     const menu = document.getElementById('menu-btn')!;
     const sidebar = document.getElementById('game-sidebar')!;
-    const toggle = document.getElementById('difficulty-toggle')!;
     screen = new LevelScreen({ level: foundations, storage });
     menu.click();
     expect(sidebar.hidden).toBe(false);
@@ -106,8 +117,6 @@ describe('Main game level integration', () => {
     screen = new LevelScreen({ level: xor, storage });
     menu.click();
     expect(sidebar.hidden).toBe(false);
-    toggle.click();
-    expect(toggle.dataset.mode).toBe('HARD');
     document.getElementById('sidebar-close-btn')!.click();
     expect(sidebar.hidden).toBe(true);
   });
@@ -118,7 +127,7 @@ describe('Main game level integration', () => {
     screen.destroy();
 
     screen = new LevelScreen({ level: xor, storage });
-    expect(document.getElementById('level-title')!.textContent).toBe('Level 2 / 5');
+    expect(document.getElementById('level-title')!.textContent).toBe('Level 2 / 10');
     expect(render.mock.lastCall![0].slots.slot_xor.assignedGate).toBe('NULL');
     screen.destroy();
 
@@ -127,13 +136,20 @@ describe('Main game level integration', () => {
     expect(document.querySelector('[data-gate="AND"] .gate-count')?.textContent).toBe('×0');
   });
 
-  it('saves completion and resets only the selected level board', () => {
+  it('replays a completed level from its starting board while preserving completion', () => {
     const otherLevel = { completed: true, stars: 2, placements: { slot_xor: 'XOR' } } as const;
     expect(storage.saveLevel(xor, otherLevel)).toBe(true);
     screen = new LevelScreen({ level: foundations, storage });
     options.onPlaceGate('slot_and', 'AND');
     options.onPlaceGate('slot_or', 'OR');
     expect(storage.getProgress()[foundations.id].completed).toBe(true);
+    screen.destroy();
+
+    screen = new LevelScreen({ level: foundations, storage: new StorageAdapter() });
+    expect(render.mock.lastCall![0].slots).toMatchObject({
+      slot_and: { assignedGate: 'AND' },
+      slot_or: { assignedGate: 'OR' },
+    });
 
     document.getElementById('reset-btn')!.click();
     expect(render.mock.lastCall![0].id).toBe(foundations.id);
@@ -141,7 +157,26 @@ describe('Main game level integration', () => {
       completed: true,
       placements: { slot_not: 'NOT', slot_and: 'NULL', slot_or: 'NULL' },
     });
+
+    options.onPlaceGate('slot_and', 'AND');
+    options.onPlaceGate('slot_or', 'OR');
+    expect(render.mock.lastCall![1].out_Y).toBe(1);
+    expect(storage.loadLevel(foundations)).toMatchObject({
+      completed: true,
+      placements: { slot_and: 'AND', slot_or: 'OR' },
+    });
     expect(storage.loadLevel(xor)).toEqual(otherLevel);
+  });
+
+  it('sidebar Restart resets the board and closes the sidebar', () => {
+    screen = new LevelScreen({ level: foundations, storage });
+    options.onPlaceGate('slot_and', 'AND');
+    document.getElementById('menu-btn')!.click();
+    document.getElementById('sidebar-restart-btn')!.click();
+
+    expect(render.mock.lastCall![0].slots.slot_and.assignedGate).toBe('NULL');
+    expect(storage.loadLevel(foundations)?.placements.slot_and).toBe('NULL');
+    expect(document.getElementById('game-sidebar')!.hidden).toBe(true);
   });
 
   it('persists the board after undo and restores its gate inventory', () => {
@@ -228,10 +263,21 @@ describe('LevelScreen Logic', () => {
         <button id="restart-minigame-btn"></button>
       </div>
 
+      <div id="gate-info-overlay" hidden>
+        <div id="gate-info-modal">
+          <h2 class="gate-info-title"></h2>
+          <p class="gate-info-subtitle"></p>
+          <p class="gate-info-description"></p>
+          <p class="gate-info-fun-fact"></p>
+          <img class="gate-info-graphic" />
+          <div class="gate-info-input-labels"></div>
+          <div class="gate-info-truth"></div>
+          <button id="gate-info-dismiss"></button>
+        </div>
+      </div>
       <div id="game-sidebar" hidden>
         <div id="sidebar-backdrop"></div>
         <button id="sidebar-close-btn"></button>
-        <button id="difficulty-toggle" data-mode="EASY"></button>
       </div>
       
       <button id="undo-btn"></button>
@@ -331,10 +377,21 @@ describe('Timed minigame', () => {
         <button id="restart-minigame-btn"></button>
       </div>
 
+      <div id="gate-info-overlay" hidden>
+        <div id="gate-info-modal">
+          <h2 class="gate-info-title"></h2>
+          <p class="gate-info-subtitle"></p>
+          <p class="gate-info-description"></p>
+          <p class="gate-info-fun-fact"></p>
+          <img class="gate-info-graphic" />
+          <div class="gate-info-input-labels"></div>
+          <div class="gate-info-truth"></div>
+          <button id="gate-info-dismiss"></button>
+        </div>
+      </div>
       <div id="game-sidebar" hidden>
         <div id="sidebar-backdrop"></div>
         <button id="sidebar-close-btn"></button>
-        <button id="difficulty-toggle" data-mode="EASY"></button>
       </div>
       
       <button id="undo-btn"></button>
@@ -390,6 +447,37 @@ describe('Timed minigame', () => {
     expect(document.getElementById('timer-display')!.textContent).toBe('13s');
   });
 
+  it('pauses the timer while the tutorial is open and resumes it on return', () => {
+    document.getElementById('game-sidebar')!.insertAdjacentHTML('beforeend', '<button id="tutorial-btn"></button>');
+    let onReturn: (() => void) | undefined;
+    new LevelScreen({ timed: true, onTutorial: (back) => { onReturn = back; } });
+    const timer = document.getElementById('timer-display')!;
+
+    vi.advanceTimersByTime(3000);
+    document.getElementById('tutorial-btn')!.click();
+    vi.advanceTimersByTime(20000);
+    expect(timer.textContent).toBe('12s');
+    expect(document.getElementById('game-over-overlay')!.hidden).toBe(true);
+
+    onReturn!();
+    vi.advanceTimersByTime(2000);
+    expect(timer.textContent).toBe('10s');
+  });
+
+  it('does not restart the timer if the minigame was left during the tutorial', () => {
+    document.getElementById('game-sidebar')!.insertAdjacentHTML('beforeend', '<button id="tutorial-btn"></button>');
+    let onReturn: (() => void) | undefined;
+    const screen = new LevelScreen({ timed: true, onTutorial: (back) => { onReturn = back; } });
+    const timer = document.getElementById('timer-display')!;
+
+    vi.advanceTimersByTime(1000);
+    document.getElementById('tutorial-btn')!.click();
+    screen.destroy();
+    onReturn!();
+    vi.advanceTimersByTime(5000);
+    expect(timer.textContent).toBe('14s');
+  });
+
   it('Play Again resets the timer', () => {
     new LevelScreen({ timed: true });
 
@@ -427,10 +515,21 @@ describe('Main Menu button', () => {
       <button id="reset-btn"></button>
       <button id="undo-btn"></button>
       <button id="menu-btn"></button>
+      <div id="gate-info-overlay" hidden>
+        <div id="gate-info-modal">
+          <h2 class="gate-info-title"></h2>
+          <p class="gate-info-subtitle"></p>
+          <p class="gate-info-description"></p>
+          <p class="gate-info-fun-fact"></p>
+          <img class="gate-info-graphic" />
+          <div class="gate-info-input-labels"></div>
+          <div class="gate-info-truth"></div>
+          <button id="gate-info-dismiss"></button>
+        </div>
+      </div>
       <div id="game-sidebar" hidden>
         <button id="sidebar-close-btn"></button>
         <button id="main-menu-btn"></button>
-        <button id="difficulty-toggle" data-mode="EASY"></button>
       </div>
     `;
   });
@@ -473,5 +572,83 @@ describe('Main Menu button', () => {
 
     screen = new LevelScreen({ level: foundations, storage: new StorageAdapter() });
     expect(render.mock.lastCall![0].slots.slot_and.assignedGate).toBe('AND');
+  });
+});
+
+describe('Tutorial button', () => {
+  const [foundations] = mainLevels;
+  let screen: LevelScreen;
+  let storage: StorageAdapter;
+
+  beforeEach(() => {
+    localStorage.clear();
+    storage = new StorageAdapter();
+    document.body.innerHTML = `
+      <div id="konva-container"></div>
+      <div id="palette-grid"></div>
+      <button id="reset-btn"></button>
+      <button id="undo-btn"></button>
+      <button id="menu-btn"></button>
+      <div id="gate-info-overlay" hidden>
+        <div id="gate-info-modal">
+          <h2 class="gate-info-title"></h2>
+          <p class="gate-info-subtitle"></p>
+          <p class="gate-info-description"></p>
+          <p class="gate-info-fun-fact"></p>
+          <img class="gate-info-graphic" />
+          <div class="gate-info-input-labels"></div>
+          <div class="gate-info-truth"></div>
+          <button id="gate-info-dismiss"></button>
+        </div>
+      </div>
+      <div id="game-sidebar" hidden>
+        <button id="sidebar-close-btn"></button>
+        <button id="tutorial-btn"></button>
+        <button id="main-menu-btn"></button>
+        <button id="difficulty-toggle" data-mode="EASY"></button>
+      </div>
+    `;
+  });
+
+  afterEach(() => screen?.destroy());
+
+  it('has an id in the game sidebar of index.html', () => {
+    const page = new DOMParser().parseFromString(indexHtml, 'text/html');
+    expect(page.querySelector('#game-sidebar #tutorial-btn')?.textContent?.trim()).toBe('Tutorial');
+  });
+
+  it('closes the sidebar and calls onTutorial once per click', () => {
+    const onTutorial = vi.fn();
+    screen = new LevelScreen({ level: foundations, storage, onTutorial });
+    document.getElementById('menu-btn')!.click();
+    document.getElementById('tutorial-btn')!.click();
+    expect(onTutorial).toHaveBeenCalledTimes(1);
+    expect(document.getElementById('game-sidebar')!.hidden).toBe(true);
+  });
+
+  it('leaves the board as it was so the player can come back to it', () => {
+    screen = new LevelScreen({ level: foundations, storage, onTutorial: () => {} });
+    options.onPlaceGate('slot_and', 'AND');
+    document.getElementById('tutorial-btn')!.click();
+    options.onPlaceGate('slot_or', 'OR');
+    const slots = render.mock.lastCall![0].slots;
+    expect(slots.slot_and.assignedGate).toBe('AND');
+    expect(slots.slot_or.assignedGate).toBe('OR');
+  });
+
+  it('does nothing when no onTutorial callback is given', () => {
+    screen = new LevelScreen({ level: foundations, storage });
+    document.getElementById('menu-btn')!.click();
+    expect(() => document.getElementById('tutorial-btn')!.click()).not.toThrow();
+    expect(document.getElementById('game-sidebar')!.hidden).toBe(false);
+  });
+
+  it('stops calling onTutorial once the level is destroyed', () => {
+    const onTutorial = vi.fn();
+    screen = new LevelScreen({ level: foundations, storage, onTutorial });
+    screen.destroy();
+    document.getElementById('tutorial-btn')!.click();
+    expect(onTutorial).not.toHaveBeenCalled();
+    screen = new LevelScreen({ level: foundations, storage });
   });
 });

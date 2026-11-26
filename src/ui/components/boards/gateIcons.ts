@@ -3,6 +3,7 @@ import { loadImage } from '../../../ui_behavior/loadImage';
 
 const cache = new Map<string, HTMLImageElement>();
 const loading = new Map<string, Promise<HTMLImageElement>>();
+const INFO_KEY = '__info__';
 
 /** Returns a cached gate SVG if already loaded. */
 export function getGateIcon(gate: string): HTMLImageElement | undefined {
@@ -22,6 +23,26 @@ export function loadGateIcon(gate: string): Promise<HTMLImageElement> {
       return img;
     });
     loading.set(gate, pending);
+  }
+  return pending;
+}
+
+export function getInfoIcon(): HTMLImageElement | undefined {
+  return cache.get(INFO_KEY);
+}
+
+export function loadInfoIcon(): Promise<HTMLImageElement> {
+  const hit = cache.get(INFO_KEY);
+  if (hit) return Promise.resolve(hit);
+
+  let pending = loading.get(INFO_KEY);
+  if (!pending) {
+    pending = loadImage('/assets/info.svg').then((img) => {
+      cache.set(INFO_KEY, img);
+      loading.delete(INFO_KEY);
+      return img;
+    });
+    loading.set(INFO_KEY, pending);
   }
   return pending;
 }
@@ -55,5 +76,41 @@ export function addGateIcon(
     height,
     listening: false,
   }));
+  return true;
+}
+
+/** Top-right info affordance on a placed gate slot. Returns false if still loading. */
+export function addSlotInfoButton(
+  group: Konva.Group,
+  slotWidth: number,
+  onInfo: () => void,
+): boolean {
+  const img = getInfoIcon();
+  if (!img) return false;
+
+  const size = Math.max(12, Math.round(slotWidth * 0.12));
+  const button = new Konva.Image({
+    image: img,
+    x: slotWidth - size - 6,
+    y: 5,
+    width: size,
+    height: size,
+    opacity: 0.75,
+  });
+  button.cache();
+  button.filters([Konva.Filters.Invert]);
+  button.on('click tap', (event) => {
+    event.cancelBubble = true;
+    onInfo();
+  });
+  button.on('mouseenter', () => {
+    button.opacity(1);
+    button.getLayer()?.batchDraw();
+  });
+  button.on('mouseleave', () => {
+    button.opacity(0.75);
+    button.getLayer()?.batchDraw();
+  });
+  group.add(button);
   return true;
 }

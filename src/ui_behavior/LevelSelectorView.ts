@@ -2,6 +2,7 @@
 import Konva from "konva";
 import type { View } from "../screenTypes.ts";
 import menuImageUrl from "../assets/levelSelectorMenu.png";
+import type { LevelProgressSummary } from "../persistence/storageAdapter";
 import type { LevelConfig } from "../types/circuit";
 
 const IMAGE = { width: 800, height: 550 };
@@ -21,6 +22,7 @@ const BUTTON_STYLE = {
 
 export class LevelSelectorView implements View {
   private group = new Konva.Group();
+  private readonly levelLabels = new Map<string, { label: string; text: Konva.Text }>();
 
   constructor(
     width: number,
@@ -57,25 +59,27 @@ export class LevelSelectorView implements View {
       this.group.getLayer()?.draw();
     });
 
+    const twoColumns = levels.length > 5;
+    const rows = Math.ceil(levels.length / (twoColumns ? 2 : 1));
+    const buttonScale = Math.min(1, width / (twoColumns ? 560 : 275), height / 420);
+    const rowSpacing = Math.min(54 * buttonScale / height, 0.11);
+    const columnSpacing = 255 * buttonScale / width;
+
     for (const [index, entry] of levels.entries()) {
+      const row = index % rows;
       const level: LevelButton = {
         id: entry.id,
         label: `Level ${index + 1}`,
-        x: 0.5,
-        y:
-          0.58 +
-          (index - (levels.length - 1) / 2) *
-            Math.min(54 / height, 0.11),
+        x: twoColumns ? 0.5 + (Math.floor(index / rows) - 0.5) * columnSpacing : 0.5,
+        y: 0.58 + (row - (rows - 1) / 2) * rowSpacing,
       };
 
-      this.group.add(
-        this.createButton(
-          level,
-          width,
-          height,
-          onStartCutscene,
-        ),
-      );
+      const button = this.createButton(level, width, height, onStartCutscene);
+      const center = { x: width * level.x, y: height * level.y };
+      button.offset(center);
+      button.position(center);
+      button.scale({ x: buttonScale, y: buttonScale });
+      this.group.add(button);
     }
   }
 
@@ -100,28 +104,32 @@ export class LevelSelectorView implements View {
       }),
     );
 
-    button.add(
-      new Konva.Text({
-        x,
-        y,
-        width: BUTTON_STYLE.width,
-        height: BUTTON_STYLE.height,
-        text: level.label,
-        fontSize: BUTTON_STYLE.fontSize,
-        fill: "black",
-        align: "center",
-        verticalAlign: "middle",
-      }),
-    );
+    const text = new Konva.Text({
+      x,
+      y,
+      width: BUTTON_STYLE.width,
+      height: BUTTON_STYLE.height,
+      text: level.label,
+      fontSize: BUTTON_STYLE.fontSize,
+      fill: "black",
+      align: "center",
+      verticalAlign: "middle",
+    });
+    button.add(text);
+    this.levelLabels.set(level.id, { label: level.label, text });
 
     button.on("click tap", (event) => {
       event.cancelBubble = true;
-
-      // Open the flashlight cutscene for this level.
       onStartCutscene(level.id);
     });
 
     return button;
+  }
+
+  updateProgress(progress: Readonly<Record<string, LevelProgressSummary>>): void {
+    for (const [id, { label, text }] of this.levelLabels) {
+      text.text(progress[id]?.completed ? `${label} · Completed` : label);
+    }
   }
 
   show(): void {

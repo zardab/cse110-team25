@@ -5,12 +5,18 @@ import { Level02XorBoardView } from './components/boards/Level02XorBoardView';
 import { Level03NandBoardView } from './components/boards/Level03NandBoardView';
 import { Level04NorBoardView } from './components/boards/Level04NorBoardView';
 import { Level05XnorBoardView } from './components/boards/Level05XnorBoardView';
+import { Level06ChoicesBoardView } from './components/boards/Level06ChoicesBoardView';
+import { Level07TiedBoardView } from './components/boards/Level07TiedBoardView';
+import { Level08MirrorBoardView } from './components/boards/Level08MirrorBoardView';
+import { Level09SharedBoardView } from './components/boards/Level09SharedBoardView';
+import { Level10FinaleBoardView } from './components/boards/Level10FinaleBoardView';
 import { SideMenu } from './components/SideMenu';
+import { GateInfoModal } from './components/GateInfoModal';
 import { createStore, type GameState, type GameStore } from '../state/store';
 import type { GateType, LevelConfig } from '../types/circuit';
 import { LevelValidationError, loadLevel } from '../content/levelLoader';
 import type { StorageAdapter } from '../persistence/storageAdapter';
-import { mainLevels } from '../content/levelCatalog';
+import { levelIntroGates, mainLevels } from '../content/levelCatalog';
 
 type BoardView = GameBoardView | FixedLayoutBoardView;
 
@@ -20,6 +26,11 @@ const LEVEL_BOARD_VIEWS: Record<string, new (options: BoardViewOptions) => Fixed
   level_03_nand: Level03NandBoardView,
   level_04_nor: Level04NorBoardView,
   level_05_xnor: Level05XnorBoardView,
+  level_06_choices: Level06ChoicesBoardView,
+  level_07_tied: Level07TiedBoardView,
+  level_08_mirror: Level08MirrorBoardView,
+  level_09_shared: Level09SharedBoardView,
+  level_10_finale: Level10FinaleBoardView,
 };
 
 const DEFAULT_MINIGAME_DURATION_SECONDS = 15;
@@ -31,8 +42,11 @@ interface LevelScreenOptions {
   timed?: boolean;
   durationSeconds?: number;
   onNextLevel?: (level: LevelConfig) => void;
+  onGameComplete?: () => void;
   onPreviousLevel?: (level: LevelConfig) => void;
   onMainMenu?: () => void;
+  /** Opens the tutorial; call `onReturn` when the player comes back so a timed run resumes. */
+  onTutorial?: (onReturn: () => void) => void;
 }
 
 const LEVEL_1_CONFIG: LevelConfig = {
@@ -65,11 +79,14 @@ export class LevelScreen {
   private unsubscribe = () => {};
   private boardView: BoardView;
   private sideMenu!: SideMenu;
+  private gateInfo!: GateInfoModal;
   private readonly startingLevel: LevelConfig;
   private readonly storage?: StorageAdapter;
   private readonly onNextLevel?: (level: LevelConfig) => void;
+  private readonly onGameComplete?: () => void;
   private readonly onPreviousLevel?: (level: LevelConfig) => void;
   private readonly onMainMenu?: () => void;
+  private readonly onTutorial?: (onReturn: () => void) => void;
   private readonly controls = new AbortController();
 
   // Minigame timer settings
@@ -85,8 +102,10 @@ export class LevelScreen {
     this.startingLevel = options.level ?? LEVEL_1_CONFIG;
     this.storage = options.storage;
     this.onNextLevel = options.onNextLevel;
+    this.onGameComplete = options.onGameComplete;
     this.onPreviousLevel = options.onPreviousLevel;
     this.onMainMenu = options.onMainMenu;
+    this.onTutorial = options.onTutorial;
     this.timed = options.timed ?? false;
     this.durationSeconds =
       options.durationSeconds ?? DEFAULT_MINIGAME_DURATION_SECONDS;
@@ -105,6 +124,7 @@ export class LevelScreen {
       onRemoveGate: (slotId: string) => {
         if (!this.gameEnded) this.store.dispatch({ type: 'REMOVE_GATE', slotId });
       },
+      onGateInfo: (gate: GateType) => this.openGateInfo(gate),
     };
 
     const Board = LEVEL_BOARD_VIEWS[this.startingLevel.id];
@@ -114,6 +134,7 @@ export class LevelScreen {
     this.updateLevelProgressUI();
     this.loadLevel(this.restoreLevel());
     if (this.timed) this.startTimer();
+    this.showLevelIntro();
   }
 
   // The store has no reset action, so starting a level over means a fresh store.
@@ -164,6 +185,7 @@ export class LevelScreen {
     this.hideGameOver();
     this.hideLevelNavButtons();
     this.sideMenu.close();
+    this.gateInfo.close();
     this.unsubscribe();
     this.controls.abort();
     this.boardView.destroy();
@@ -178,7 +200,12 @@ export class LevelScreen {
     this.gameEnded = false;
     this.hideGameOver();
     this.updateTimerDisplay();
+    this.runTimer();
+  }
 
+  // Ticks down from the current time without resetting it.
+  private runTimer() {
+    if (!this.timed || this.gameEnded || this.timerId !== null) return;
     this.timerId = setInterval(() => { this.timeRemaining--; this.updateTimerDisplay();
       if (this.timeRemaining <= 0) this.finishGame(false);}, 1000);
   }
@@ -220,6 +247,10 @@ export class LevelScreen {
     return mainLevels.findIndex((level) => level.id === this.startingLevel.id);
   }
 
+  private isFinalLevel(): boolean {
+    return !this.timed && this.startingLevel.id === "level_10_finale";
+  }
+
   private nextCatalogLevel(): LevelConfig | undefined {
     const index = this.catalogIndex();
     if (index < 0 || index >= mainLevels.length - 1) return undefined;
@@ -241,7 +272,13 @@ export class LevelScreen {
 
   private updateLevelNavButtons(solved: boolean): void {
     const next = document.getElementById('next-level-btn');
-    if (next) next.hidden = !(solved && this.nextCatalogLevel() && this.onNextLevel);
+    if (next) {
+      const finalLevel = this.isFinalLevel();
+      next.textContent = finalLevel ? "Finish Level" : "Next Level";
+      next.hidden = !(solved && (finalLevel
+        ? this.onGameComplete
+        : this.nextCatalogLevel() && this.onNextLevel));
+    }
 
     const prev = document.getElementById('prev-level-btn');
     if (prev) prev.hidden = !(this.previousCatalogLevel() && this.onPreviousLevel);
@@ -263,10 +300,27 @@ export class LevelScreen {
   private setupHeaderAndTray() {
     const options = { signal: this.controls.signal };
     this.sideMenu = new SideMenu(this.controls.signal);
+    this.gateInfo = new GateInfoModal(this.controls.signal);
     document.getElementById('menu-btn')?.addEventListener('click', () => this.sideMenu.open(), options);
     document.getElementById('main-menu-btn')?.addEventListener('click', () => this.onMainMenu?.(), options);
+    // The level stays alive while the tutorial shows, so coming back keeps the board as it was.
+    // A timed run pauses its clock until the player comes back.
+    document.getElementById('tutorial-btn')?.addEventListener('click', () => {
+      if (!this.onTutorial) return;
+      this.sideMenu.close();
+      this.stopTimer();
+      const signal = this.controls.signal;
+      this.onTutorial(() => {
+        if (!signal.aborted) this.runTimer();
+      });
+    }, options);
 
     document.getElementById('next-level-btn')?.addEventListener('click', () => {
+      if (!this.store.getState().result?.isSolved) return;
+      if (this.isFinalLevel()) {
+        this.onGameComplete?.();
+        return;
+      }
       const next = this.nextCatalogLevel();
       if (next) this.onNextLevel?.(next);
     }, options);
@@ -283,6 +337,10 @@ export class LevelScreen {
     };
     document.getElementById('reset-btn')?.addEventListener('click', reset, options);
     document.getElementById('restart-minigame-btn')?.addEventListener('click', reset, options);
+    document.getElementById('sidebar-restart-btn')?.addEventListener('click', () => {
+      reset();
+      this.sideMenu.close();
+    }, options);
 
     // Undo Button Event: the store takes back the latest board change, if there is one
     document.getElementById('undo-btn')?.addEventListener('click', () => {
@@ -346,18 +404,36 @@ export class LevelScreen {
               alt="${gate}"
               draggable="false"
             />
+            <button
+              type="button"
+              class="gate-card-info-btn"
+              data-gate-info="${gate}"
+              aria-label="About ${gate}"
+            >
+              <img src="/assets/info.svg" alt="" draggable="false" />
+            </button>
             <span class="gate-count">×${remaining}</span>
           </div>
         `;
       })
       .join('');
 
+    grid.querySelectorAll('.gate-card-info-btn').forEach((button) => {
+      const gate = button.getAttribute('data-gate-info') as GateType;
+      button.addEventListener('click', (event) => {
+        event.stopPropagation();
+        this.openGateInfo(gate);
+      });
+      button.addEventListener('pointerdown', (event) => event.stopPropagation());
+    });
+
     // Attach native HTML Drag & Click listeners; empty cards get none, as the store would reject them.
     grid.querySelectorAll('.gate-card[aria-disabled="false"]').forEach((card) => {
       const gate = card.getAttribute('data-gate') as GateType;
 
       if (slots.length === 1) {
-        card.addEventListener('click', () => {
+        card.addEventListener('click', (event) => {
+          if ((event.target as HTMLElement).closest('.gate-card-info-btn')) return;
           if (this.gameEnded) return;
           this.store.dispatch({ type: 'PLACE_GATE', slotId: slots[0].id, gate });
         });
@@ -366,5 +442,16 @@ export class LevelScreen {
         (e as DragEvent).dataTransfer?.setData('gateType', gate);
       });
     });
+  }
+
+  private openGateInfo(gate: GateType): void {
+    this.gateInfo.open(gate);
+  }
+
+  /** Same info card(s) as ⓘ, shown when entering a catalog level. */
+  private showLevelIntro(): void {
+    const gates = levelIntroGates[this.startingLevel.id];
+    if (!gates?.length) return;
+    this.gateInfo.openGates(gates, { locked: true });
   }
 }

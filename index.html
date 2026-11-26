@@ -28,13 +28,6 @@
           <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.19"/>
         </svg>
       </button>
-      <button id="help-btn" class="icon-btn" title="Help" aria-label="Help">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="10"></circle>
-          <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
-          <line x1="12" y1="17" x2="12.01" y2="17"></line>
-        </svg>
-      </button>
     </div>
   </header>
 
@@ -60,10 +53,48 @@
   <footer class="gate-tray-section">
     <div class="tray-header">
       <span class="tray-title">AVAILABLE GATES</span>
-      <span class="tray-subtitle">CLICK ⓘ TO LEARN MORE</span>
+      <span class="tray-subtitle">CLICK <img class="tray-subtitle-info" src="/assets/info.svg" alt="info" draggable="false" /> TO LEARN MORE</span>
     </div>
     <div id="palette-grid" class="palette-grid"></div>
   </footer>
+
+  <div id="gate-info-overlay" class="gate-info-overlay" hidden>
+    <div class="gate-info-shell">
+      <div class="gate-info-row">
+        <button id="gate-info-prev" class="gate-info-arrow" type="button" aria-label="Previous gate" hidden>
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <div id="gate-info-modal" class="gate-info-modal" role="dialog" aria-modal="true" aria-labelledby="gate-info-title">
+          <div class="gate-info-copy">
+            <div class="gate-info-heading">
+              <h2 id="gate-info-title" class="gate-info-title">NAND</h2>
+              <p class="gate-info-subtitle">“NOT-AND”</p>
+            </div>
+            <p class="gate-info-description"></p>
+            <p class="gate-info-fun-fact"></p>
+          </div>
+          <div class="gate-info-visual">
+            <div class="gate-info-input-labels" aria-hidden="true"></div>
+            <img class="gate-info-graphic" src="/assets/NAND.svg" alt="" />
+          </div>
+          <div class="gate-info-aside">
+            <div class="gate-info-truth"></div>
+            <div class="gate-info-actions">
+              <button id="gate-info-dismiss" class="gate-info-btn gate-info-btn-dismiss" type="button">Got it</button>
+            </div>
+          </div>
+        </div>
+        <button id="gate-info-next" class="gate-info-arrow" type="button" aria-label="Next gate" hidden>
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M9 18l6-6-6-6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+      </div>
+      <div id="gate-info-dots" class="gate-info-dots" hidden></div>
+    </div>
+  </div>
 
   <div id="game-sidebar" class="game-sidebar" hidden>
     <div id="sidebar-backdrop" class="sidebar-backdrop" aria-hidden="true"></div>
@@ -76,24 +107,9 @@
       </button>
 
       <nav class="sidebar-nav">
-        <button type="button" class="sidebar-nav-btn">Tutorial</button>
-        <button type="button" class="sidebar-nav-btn">Restart</button>
+        <button id="tutorial-btn" type="button" class="sidebar-nav-btn">Tutorial</button>
+        <button id="sidebar-restart-btn" type="button" class="sidebar-nav-btn">Restart</button>
         <button id="main-menu-btn" type="button" class="sidebar-nav-btn">Main Menu</button>
-
-        <div class="sidebar-difficulty-row">
-          <span class="sidebar-difficulty-label">Difficulty</span>
-          <button
-            id="difficulty-toggle"
-            class="difficulty-toggle"
-            type="button"
-            data-mode="EASY"
-            aria-label="Toggle difficulty"
-          >
-            <span class="difficulty-toggle-thumb" aria-hidden="true"></span>
-            <span class="difficulty-option" data-value="EASY">EASY</span>
-            <span class="difficulty-option" data-value="HARD">HARD</span>
-          </button>
-        </div>
       </nav>
 
       <div class="sidebar-footer">
