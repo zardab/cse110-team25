@@ -211,6 +211,22 @@ body {
   color: #71717A;
 }
 
+.tray-subtitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+}
+
+/* Same info.svg as the gate-card ⓘ button, tinted to match the label text */
+.tray-subtitle-info {
+  width: 13px;
+  height: 13px;
+  object-fit: contain;
+  user-select: none;
+  filter: invert(1);
+  opacity: 0.45;
+}
+
 .palette-grid {
   display: flex;
   gap: 16px;
