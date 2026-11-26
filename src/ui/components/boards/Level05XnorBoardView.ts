@@ -7,7 +7,7 @@ import { FixedLayoutBoardView, type BoardLayout, type BoardViewOptions } from '.
  */
 const LAYOUT: BoardLayout = {
   width: 900,
-  height: 400,
+  height: 420,
   scale: 1.2,
   slotWidth: 92,
   slotHeight: 46,
@@ -43,8 +43,19 @@ const LAYOUT: BoardLayout = {
   },
 };
 
+function shiftDown(points: BoardLayout["inputs"]): BoardLayout["inputs"] {
+  return Object.fromEntries(
+    Object.entries(points).map(([id, point]) => [id, { ...point, y: point.y + 20 }]),
+  );
+}
+
 export class Level05XnorBoardView extends FixedLayoutBoardView {
   constructor(options: BoardViewOptions) {
-    super(options, LAYOUT);
+    super(options, {
+      ...LAYOUT,
+      inputs: shiftDown(LAYOUT.inputs),
+      slots: shiftDown(LAYOUT.slots),
+      outputs: shiftDown(LAYOUT.outputs),
+    });
   }
 }
