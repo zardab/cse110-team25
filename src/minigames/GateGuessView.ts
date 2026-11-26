@@ -1,5 +1,6 @@
 import Konva from 'konva';
 import type { View } from '../screenTypes';
+import { addGateIcon, loadGateIcon } from '../ui/components/boards/gateIcons';
 import { GUESS_GATES, MAX_LIVES, ROUND_SECONDS, outputOf, type Bit, type Clue, type GuessGate } from './gateGuess';
 
 export type MessageTone = 'info' | 'hint' | 'good' | 'bad';
@@ -58,43 +59,48 @@ const BOARD = { width: 960, height: 600 };
 /** The same font stack as the main game (src/index.css). */
 const FONT = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
 
-// Colors from the main game's stylesheet and board, so the minigame looks like part of it.
+// Colors from the main game's dark stylesheet (src/index.css) and board, so the minigame looks like part of it.
 const COLOR = {
-  page: '#ECECED',
-  card: '#FAFAFA',
-  surface: '#FFFFFF',
-  border: '#E4E4E7',
-  tray: '#E2E2E4',
-  badge: '#EFEFEF',
-  ink: '#18181B',
-  muted: '#71717A',
-  faint: '#A1A1AA',
-  label: '#8C8F96',
-  hover: '#4B5563',
-  wireOff: '#D1D5DB',
+  page: '#09090B',
+  card: '#18181B',
+  surface: '#18181B',
+  raised: '#27272A',
+  border: '#27272A',
+  edge: '#3F3F46',
+  tray: '#18181B',
+  badge: '#27272A',
+  ink: '#FAFAFA',
+  onInk: '#18181B',
+  muted: '#A1A1AA',
+  faint: '#71717A',
+  label: '#71717A',
+  hover: '#A1A1AA',
+  wireOff: '#52525B',
   wireOn: '#EAB308',
   inputOff: '#9CA3AF',
   bulbOn: '#FACC15',
-  bulbOff: '#E5E7EB',
-  slot: '#9CA3AF',
+  bulbOff: '#3F3F46',
+  slot: '#52525B',
+  slotFill: '#27272A',
+  slotText: '#A1A1AA',
   placed: '#3B82F6',
-  placedText: '#1D4ED8',
-  placedFill: '#EFF6FF',
-  one: '#CA8A04',
+  placedText: '#93C5FD',
+  placedFill: '#1F2937',
+  one: '#FACC15',
   heart: '#EF4444',
-  warning: '#DC2626',
+  warning: '#F87171',
 };
 
 const TONE: Record<MessageTone, string> = {
   info: COLOR.ink,
-  hint: '#D4A000',
-  good: '#15803D',
-  bad: '#DC2626',
+  hint: '#FACC15',
+  good: '#4ADE80',
+  bad: '#F87171',
 };
 
 type ButtonVariant = 'primary' | 'secondary' | 'gate';
 
-const GATE_BUTTON = { width: 130, height: 56, gap: 15, y: 456 };
+const GATE_BUTTON = { width: 130, height: 64, gap: 15, y: 452 };
 const TIMER_BAR = { y: 84, height: 6 };
 /** At or below this many seconds the timer turns red. */
 const TIMER_WARNING = 5;
@@ -108,6 +114,8 @@ export class GateGuessView implements View {
   private readonly board = new Konva.Group();
   private timerText?: Konva.Text;
   private timerBar?: Konva.Rect;
+  /** Redraws the current screen; used once the gate icons finish loading. */
+  private redraw?: () => void;
 
   constructor(width: number, height: number, private readonly handlers: GateGuessHandlers) {
     // A light page with one rounded card on it, like the main game's board card.
@@ -123,9 +131,12 @@ export class GateGuessView implements View {
     this.board.scale({ x: scale, y: scale });
     this.board.position({ x: (width - BOARD.width * scale) / 2, y: (height - BOARD.height * scale) / 2 });
     this.group.add(this.board);
+    // Gate icons load once; redraw whatever is showing when they arrive.
+    Promise.all(GUESS_GATES.map(loadGateIcon)).then(() => this.redraw?.(), () => undefined);
   }
 
   render(model: GateGuessViewModel): void {
+    this.redraw = () => this.render(model);
     // The node under the pointer may be replaced without a mouseleave, so reset the cursor.
     this.setCursor('default');
     this.board.destroyChildren();
@@ -148,6 +159,7 @@ export class GateGuessView implements View {
 
   /** Draws the How to Play screen shown before a run starts. */
   renderIntro(model: GateGuessIntroModel): void {
+    this.redraw = () => this.renderIntro(model);
     this.setCursor('default');
     this.board.destroyChildren();
     this.drawTitle('Work out which logic gate is hidden in the box.');
@@ -159,7 +171,7 @@ export class GateGuessView implements View {
       this.board.add(new Konva.Circle({ x: 11, y: y + 10, radius: 11, fill: COLOR.ink }));
       this.board.add(new Konva.Text({
         x: 0, y: y + 3, width: 22, align: 'center', text: `${index + 1}`,
-        fontSize: 13, fontStyle: 'bold', fontFamily: FONT, fill: COLOR.surface,
+        fontSize: 13, fontStyle: 'bold', fontFamily: FONT, fill: COLOR.onInk,
       }));
       const title = new Konva.Text({
         x: 34, y: y + 1, width: 510, text: heading, fontSize: 16, fontStyle: 'bold', fontFamily: FONT, fill: COLOR.ink,
@@ -327,11 +339,17 @@ export class GateGuessView implements View {
     const hidden = model.revealedGate === null;
     card.add(new Konva.Rect({
       ...box, cornerRadius: 14, strokeWidth: 2,
-      fill: hidden ? COLOR.card : COLOR.placedFill, stroke: hidden ? COLOR.slot : COLOR.placed, dash: hidden ? [6, 5] : [],
+      fill: hidden ? COLOR.slotFill : COLOR.placedFill, stroke: hidden ? COLOR.slot : COLOR.placed, dash: hidden ? [6, 6] : [],
     }));
+    // Once revealed, the box shows the gate's symbol like a placed gate, with its name under it.
+    const icon = new Konva.Group({ x: box.x, y: box.y - 8, listening: false });
+    const hasIcon = !hidden && addGateIcon(icon, model.revealedGate!, box.width, box.height);
+    if (hasIcon) card.add(icon);
     card.add(new Konva.Text({
-      name: 'gate-box', ...box, align: 'center', verticalAlign: 'middle', fontFamily: FONT, fontStyle: 'bold',
-      text: hidden ? '?' : model.revealedGate!, fontSize: hidden ? 44 : 24, fill: hidden ? COLOR.slot : COLOR.placedText,
+      name: 'gate-box', ...box, align: 'center', fontFamily: FONT, fontStyle: 'bold',
+      verticalAlign: hasIcon ? 'bottom' : 'middle', padding: hasIcon ? 8 : 0,
+      text: hidden ? '?' : model.revealedGate!, fontSize: hidden ? 44 : hasIcon ? 14 : 24,
+      fill: hidden ? COLOR.slotText : COLOR.placedText,
     }));
 
     const bulb = { x: 475, y: outY };
@@ -364,7 +382,7 @@ export class GateGuessView implements View {
       const row = new Konva.Group({ name: `clue-row-${index}`, x: 14, y: 70 + index * 46 });
       row.add(new Konva.Rect({
         width: 262, height: 38, cornerRadius: 10, strokeWidth: selected ? 1.5 : 1,
-        fill: selected ? '#F4F4F5' : COLOR.surface, stroke: selected ? COLOR.ink : COLOR.border,
+        fill: selected ? COLOR.raised : COLOR.surface, stroke: selected ? COLOR.ink : COLOR.edge,
       }));
       const values = [clue.a, clue.b, clue.out];
       columns.forEach(({ x }, column) => {
@@ -391,7 +409,7 @@ export class GateGuessView implements View {
     const padding = 12;
     this.board.add(new Konva.Rect({
       x: start - padding, y: GATE_BUTTON.y - padding, width: total + padding * 2,
-      height: GATE_BUTTON.height + padding * 2, cornerRadius: 16, fill: COLOR.tray,
+      height: GATE_BUTTON.height + padding * 2, cornerRadius: 16, fill: COLOR.tray, stroke: COLOR.border, strokeWidth: 1,
     }));
     const playing = model.action === null;
     GUESS_GATES.forEach((gate, index) => {
@@ -415,22 +433,27 @@ export class GateGuessView implements View {
     const group = new Konva.Group({ name, x, y });
     let fill: string = COLOR.ink;
     let stroke: string | undefined;
-    let textColor: string = COLOR.surface;
+    let textColor: string = COLOR.onInk;
     if (variant === 'secondary') {
-      fill = COLOR.border;
+      fill = COLOR.raised;
       textColor = COLOR.ink;
     } else if (variant === 'gate') {
-      fill = options.revealed ? COLOR.placedFill : COLOR.surface;
-      stroke = options.revealed ? COLOR.placed : '#E5E7EB';
+      fill = options.revealed ? COLOR.placedFill : COLOR.raised;
+      stroke = options.revealed ? COLOR.placed : COLOR.edge;
       textColor = options.revealed ? COLOR.placedText : COLOR.ink;
     }
     const rect = new Konva.Rect({
       width, height, fill, stroke, strokeWidth: stroke ? 1.5 : 0, cornerRadius: variant === 'gate' ? 12 : 8,
     });
     group.add(rect);
+    // Gate cards show the gate's symbol, like the main game's tray, with its name under it.
+    const icon = new Konva.Group({ y: -8, listening: false });
+    const hasIcon = variant === 'gate' && addGateIcon(icon, label, width, height);
+    if (hasIcon) group.add(icon);
     group.add(new Konva.Text({
-      width, height, text: label, align: 'center', verticalAlign: 'middle', fontFamily: FONT, fontStyle: 'bold',
-      fontSize: options.fontSize ?? 15, fill: textColor, textDecoration: options.used ? 'line-through' : '',
+      width, height, text: label, align: 'center', fontFamily: FONT, fontStyle: 'bold',
+      verticalAlign: hasIcon ? 'bottom' : 'middle', padding: hasIcon ? 5 : 0,
+      fontSize: hasIcon ? 12 : options.fontSize ?? 15, fill: textColor, textDecoration: options.used ? 'line-through' : '',
     }));
     // Spent gates fade out, like a gate with none left in the main game's tray.
     if (options.used) group.opacity(0.4);
