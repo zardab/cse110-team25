@@ -62,11 +62,6 @@
     },
     "slot_compare": {
       "id": "slot_compare",
-      "allowedGates": [
-        "AND",
-        "NOR",
-        "XNOR"
-      ],
       "inputs": [
         {
           "sourceType": "SLOT_OUTPUT",
@@ -93,11 +88,6 @@
     },
     "slot_gate": {
       "id": "slot_gate",
-      "allowedGates": [
-        "AND",
-        "NAND",
-        "NOR"
-      ],
       "inputs": [
         {
           "sourceType": "SLOT_OUTPUT",
@@ -113,11 +103,6 @@
     },
     "slot_output": {
       "id": "slot_output",
-      "allowedGates": [
-        "AND",
-        "OR",
-        "NAND"
-      ],
       "inputs": [
         {
           "sourceType": "SLOT_OUTPUT",
